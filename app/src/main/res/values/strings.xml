@@ -28,4 +28,6 @@
     <string name="gas">GAS</string>
     <string name="alias">Alias:</string>
     <string name="please_login">Please login</string>
+    <string name="transfer_btn">Transfer</string>
+    <string name="add_btn">Add</string>
 </resources>

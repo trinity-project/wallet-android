@@ -22,7 +22,6 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
-
     /**
      * The navigation bar of main tab.
      */
@@ -77,10 +76,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Init events of tabs' click action.
         initTabs();
-
         // Init events of cards' click action.
         initCards();
-
         // #Dev init.
         devInit();
     }
@@ -159,5 +156,4 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
 }

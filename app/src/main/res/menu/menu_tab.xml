@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigationTransfer"
+        android:icon="@drawable/ic_transfer_black_24dp"
+        android:title="@string/tab_transfer" />
+
+    <item
+        android:id="@+id/navigationAddChannel"
+        android:icon="@drawable/ic_add_channel_black_24dp"
+        android:title="@string/tab_add_channel" />
+
+    <item
+        android:id="@+id/navigationChannelList"
+        android:icon="@drawable/ic_channel_list_black_24dp"
+        android:title="@string/tab_channel_list" />
+
+    <item
+        android:id="@+id/navigationRecord"
+        android:icon="@drawable/ic_record_black_24dp"
+        android:title="@string/tab_record" />
+
+    <item
+        android:id="@+id/navigationDev"
+        android:icon="@drawable/ic_dev_black_24dp"
+        android:title="@string/tab_dev"
+        android:visible="true" />
+
+</menu>

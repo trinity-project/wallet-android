@@ -42,7 +42,7 @@ proguard/
 # Android Studio captures folder
 captures/
 
-# Android Studio
+# Android Studio Defualt
 *.iml
 .gradle
 /local.properties
@@ -53,6 +53,8 @@ captures/
 /build
 /captures
 .externalNativeBuild
+
+# Android Studio
 .idea
 .gradle
 build/

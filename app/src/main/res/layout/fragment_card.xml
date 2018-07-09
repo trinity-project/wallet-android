@@ -5,7 +5,7 @@
     android:id="@+id/cardFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".activity.card.PlaceholderFragment">
+    tools:context=".activity.MainActivity$PlaceholderFragment">
 
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
@@ -63,6 +63,7 @@
             app:layout_constraintTop_toBottomOf="@id/cardAddress" />
 
         <android.support.constraint.ConstraintLayout
+            android:id="@+id/cardColorFooter"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:background="@drawable/shape_corner_down_tnc"

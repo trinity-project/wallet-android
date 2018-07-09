@@ -5,18 +5,22 @@ import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.CoordinatorLayout;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import org.trinity.util.HexUtil;
 import org.trinity.wallet.R;
-import org.trinity.wallet.activity.card.SectionsPagerAdapter;
-import org.trinity.wallet.logic.IDevCallback;
 import org.trinity.wallet.logic.DevLogic;
+import org.trinity.wallet.logic.IDevCallback;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -86,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
         tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-                letAllTabsGone();
+                letTabsBeGone();
                 switch (menuItem.getItemId()) {
                     case R.id.navigationTransfer:
                         tabTransfer.setVisibility(View.VISIBLE);
@@ -110,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
         tabTransfer.setVisibility(View.VISIBLE);
     }
 
-    private void letAllTabsGone() {
+    private void letTabsBeGone() {
         tabTransfer.setVisibility(View.GONE);
         tabAddChannel.setVisibility(View.GONE);
         tabChannelList.setVisibility(View.GONE);
@@ -155,5 +159,88 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    /* ---------------------------------- INNER CLASSES ---------------------------------- */
+
+    /**
+     * A placeholder fragment containing a simple view.
+     */
+    public static class PlaceholderFragment extends Fragment {
+        /**
+         * The fragment argument representing the section number for this
+         * fragment.
+         */
+        private static final String CARD_NO = "card_no";
+
+        public PlaceholderFragment() {
+        }
+
+        /**
+         * Returns a new instance of this fragment for the given section
+         * number.
+         */
+        public static PlaceholderFragment newInstance(int cardNo) {
+            PlaceholderFragment fragment = new PlaceholderFragment();
+            Bundle args = new Bundle();
+            args.putInt(CARD_NO, cardNo);
+            fragment.setArguments(args);
+            return fragment;
+        }
+
+        @Override
+        public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                                 Bundle savedInstanceState) {
+            View rootView = inflater.inflate(R.layout.fragment_card, container, false);
+            ImageView imageView = rootView.findViewById(R.id.cardIcon);
+            TextView textView = rootView.findViewById(R.id.cardTextView);
+            View cardColorFooter = rootView.findViewById(R.id.cardColorFooter);
+            int cardNo = 0;
+            if (getArguments() != null) {
+                cardNo = getArguments().getInt(CARD_NO);
+            }
+            switch (cardNo) {
+                case 1:
+                    imageView.setImageResource(R.mipmap.ic_tnc);
+                    textView.setText(getString(R.string.card_text, "TNC"));
+                    cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_tnc);
+                    break;
+                case 2:
+                    imageView.setImageResource(R.mipmap.ic_neo);
+                    textView.setText(getString(R.string.card_text, "NEO"));
+                    cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_neo);
+                    break;
+                case 3:
+                    imageView.setImageResource(R.mipmap.ic_gas);
+                    textView.setText(getString(R.string.card_text, "GAS"));
+                    cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_gas);
+                    break;
+            }
+            return rootView;
+        }
+    }
+
+    /**
+     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
+     * one of the sections/tabs/pages.
+     */
+    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+
+        SectionsPagerAdapter(FragmentManager fm) {
+            super(fm);
+        }
+
+        @Override
+        public Fragment getItem(int position) {
+            // getItem is called to instantiate the fragment for the given page.
+            // Return a PlaceholderFragment (defined as a static inner class below).
+            return PlaceholderFragment.newInstance(position + 1);
+        }
+
+        @Override
+        public int getCount() {
+            // Show 3 total pages.
+            return 3;
+        }
     }
 }

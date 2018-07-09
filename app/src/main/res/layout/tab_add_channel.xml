@@ -19,46 +19,59 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <EditText
-        android:id="@+id/inputTNAP"
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/layTNAP"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:ems="10"
-        android:hint="@string/tnap"
-        android:inputType="textNoSuggestions"
-        android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/titleAddChannel" />
+        app:layout_constraintTop_toBottomOf="@id/titleAddChannel">
 
-    <EditText
-        android:id="@+id/inputDeposit"
-        android:layout_width="0dp"
+        <EditText
+            android:id="@+id/inputTNAP"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/tnap"
+            android:inputType="textNoSuggestions"
+            android:textSize="16sp" />
+    </android.support.design.widget.TextInputLayout>
+
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/layDeposit"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:ems="10"
-        android:hint="@string/deposit"
-        android:inputType="textNoSuggestions"
-        android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/inputTNAP" />
+        app:layout_constraintTop_toBottomOf="@id/layTNAP">
+
+        <EditText
+            android:id="@+id/inputDeposit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/deposit"
+            android:inputType="textNoSuggestions"
+            android:textSize="16sp" />
+    </android.support.design.widget.TextInputLayout>
+
 
     <TextView
         android:id="@+id/labelAssets"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_marginTop="30dp"
         android:text="@string/assets"
         android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/inputDeposit" />
+        app:layout_constraintTop_toBottomOf="@id/layDeposit" />
 
     <RadioGroup
         android:id="@+id/inputAssets"
@@ -96,20 +109,26 @@
             android:textSize="16sp" />
     </RadioGroup>
 
-    <EditText
-        android:id="@+id/inputAlias"
-        android:layout_width="0dp"
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/layAlias"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:ems="10"
-        android:hint="@string/alias"
-        android:inputType="textNoSuggestions"
-        android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/labelAssets" />
+        app:layout_constraintTop_toBottomOf="@id/labelAssets">
+
+        <EditText
+            android:id="@+id/inputAlias"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/alias"
+            android:inputType="textNoSuggestions"
+            android:textSize="16sp" />
+    </android.support.design.widget.TextInputLayout>
 
     <Button
         android:id="@+id/btnTransferTo"
@@ -123,5 +142,5 @@
         android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/inputAlias" />
+        app:layout_constraintTop_toBottomOf="@id/layAlias" />
 </android.support.constraint.ConstraintLayout>

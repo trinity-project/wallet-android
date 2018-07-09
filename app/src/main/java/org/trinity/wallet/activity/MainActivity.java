@@ -1,5 +1,6 @@
 package org.trinity.wallet.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
@@ -14,8 +15,11 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.trinity.util.HexUtil;
 import org.trinity.wallet.R;
@@ -26,6 +30,24 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 public class MainActivity extends AppCompatActivity {
+    /**
+     * The menu button.
+     */
+    @BindView(R.id.btnMainMenu)
+    public Button mainMenu;
+
+    /**
+     * The framework of card views.
+     */
+    @BindView(R.id.cardsShell)
+    public CoordinatorLayout cardsShell;
+    /**
+     * The container of a single card.
+     * <p>
+     * The {@link ViewPager} that will host the section contents.
+     */
+    @BindView(R.id.cardContainer)
+    public ViewPager cardContainer;
     /**
      * The navigation bar of main tab.
      */
@@ -47,19 +69,6 @@ public class MainActivity extends AppCompatActivity {
      */
     @BindView(R.id.tabDev)
     public ConstraintLayout tabDev;
-
-    /**
-     * The framework of card views.
-     */
-    @BindView(R.id.cardsShell)
-    public CoordinatorLayout cardsShell;
-    /**
-     * The container of a single card.
-     * <p>
-     * The {@link ViewPager} that will host the section contents.
-     */
-    @BindView(R.id.cardContainer)
-    public ViewPager cardContainer;
     /**
      * The adapter of the card group.
      * <p>
@@ -78,12 +87,52 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
+        // Init events of toolbar's menu button click action.
+        initBtnMenu();
         // Init events of tabs' click action.
         initTabs();
         // Init events of cards' click action.
         initCards();
         // #Dev init.
         devInit();
+    }
+
+    private void initBtnMenu() {
+        mainMenu.setOnClickListener(new View.OnClickListener() {
+            private PopupMenu popupMenu;
+
+            @Override
+            public void onClick(View view) {
+                popupMenu = new PopupMenu(MainActivity.this, view);
+                popupMenu.getMenuInflater().inflate(R.menu.menu_main, popupMenu.getMenu());
+                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        CharSequence title = item.getTitle();
+                        int itemId = item.getItemId();
+                        switch (itemId) {
+                            case R.id.menuSignIn:
+                                startActivity(new Intent(MainActivity.this, SignInActivity.class));
+                                break;
+                            case R.id.menuScan:
+                                break;
+                            case R.id.menuSwitchNet:
+                                break;
+                            case R.id.menuMainNet:
+                                // TODO Main Net
+                                Toast.makeText(getBaseContext(), title, Toast.LENGTH_LONG).show();
+                                break;
+                            case R.id.menuTestNet:
+                                // TODO Test Net
+                                Toast.makeText(getBaseContext(), title, Toast.LENGTH_LONG).show();
+                                break;
+                        }
+                        return true;
+                    }
+                });
+                popupMenu.show();
+            }
+        });
     }
 
     private void initTabs() {

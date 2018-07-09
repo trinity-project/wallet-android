@@ -14,7 +14,7 @@
         android:text="_DEFAULT_CHANNEL_NAME_"
         android:textSize="16dp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toTopOf="parent"></TextView>
+        app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
         android:id="@+id/channelListNumLine"
@@ -57,11 +57,12 @@
             android:layout_width="@dimen/activity_horizontal_margin"
             android:layout_height="match_parent" />
 
-        <View
-            android:layout_width="10dp"
-            android:layout_height="10dp"
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
             android:layout_gravity="center_vertical"
-            android:background="@color/colorAccent" />
+            android:contentDescription="@string/btn_channel_close"
+            android:src="@drawable/ic_close_24dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -80,12 +81,12 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status: "></TextView>
+            android:text="Status: " />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="XXXXXXXXXXXX"></TextView>
+            android:text="XXXXXXXXXXXX" />
     </LinearLayout>
 
     <View

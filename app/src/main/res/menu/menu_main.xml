@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group>
+        <item
+            android:id="@+id/menuSignIn"
+            android:title="@string/main_menu_sign_in" />
+        <item
+            android:id="@+id/menuScan"
+            android:title="@string/main_menu_scan" />
+    </group>
+    <item
+        android:id="@+id/menuSwitchNet"
+        android:title="@string/main_menu_switch_net">
+        <menu>
+            <item
+                android:id="@+id/menuMainNet"
+                android:title="@string/main_menu_main_net" />
+            <item
+                android:id="@+id/menuTestNet"
+                android:title="@string/main_menu_test_net" />
+        </menu>
+    </item>
+</menu>

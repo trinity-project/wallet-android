@@ -37,10 +37,11 @@
             android:layout_height="match_parent">
 
             <Button
+                android:id="@+id/btnMainMenu"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginEnd="@dimen/activity_horizontal_margin"
-                android:background="@drawable/ic_more_vert_24dp"
+                android:background="@drawable/ic_more_vertical_24dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintRight_toRightOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />

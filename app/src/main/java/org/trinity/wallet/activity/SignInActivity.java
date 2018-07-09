@@ -1,12 +1,5 @@
 package org.trinity.wallet.activity;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.annotation.TargetApi;
-import android.app.LoaderManager.LoaderCallbacks;
-import android.content.Loader;
-import android.database.Cursor;
-import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -22,17 +15,20 @@ import org.trinity.wallet.R;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import neoutils.Neoutils;
+import neoutils.Wallet;
 
 /**
- * A login screen that offers login via email/password.
+ * A login screen that offers login via private key.
  */
-public class SignInActivity extends AppCompatActivity implements LoaderCallbacks<Cursor> {
-
+public class SignInActivity extends AppCompatActivity {
     // UI references.
     @BindView(R.id.signInPrivateKey)
     public EditText mPrivateKeyView;
-    private View mProgressView;
     private View mLoginFormView;
+
+    // Wallet.
+    private Wallet wallet;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +57,6 @@ public class SignInActivity extends AppCompatActivity implements LoaderCallbacks
         });
 
         mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
     }
 
     /**
@@ -70,7 +65,6 @@ public class SignInActivity extends AppCompatActivity implements LoaderCallbacks
      * errors are presented and no actual login attempt is made.
      */
     private void attemptLogin() {
-
         // Reset errors.
         mPrivateKeyView.setError(null);
 
@@ -92,59 +86,19 @@ public class SignInActivity extends AppCompatActivity implements LoaderCallbacks
             // form field with an error.
             focusView.requestFocus();
         } else {
-            // Show a progress spinner, and kick off a background task to
-            // perform the user login attempt.
-            showProgress(true);
+            // TODO login
         }
+
     }
 
     private boolean isPrivateKeyValid(String privateKey) {
-        //TODO: Replace this with your own logic
-        return Boolean.parseBoolean(null);
-    }
-
-    /**
-     * Shows the progress UI and hides the login form.
-     */
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
-    private void showProgress(final boolean show) {
-        // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
-        // for very easy animations. If available, use these APIs to fade-in
-        // the progress spinner.
-        int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
-
-        mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-        mLoginFormView.animate().setDuration(shortAnimTime).alpha(
-                show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-            }
-        });
-
-        mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-        mProgressView.animate().setDuration(shortAnimTime).alpha(
-                show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            }
-        });
-    }
-
-    @Override
-    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        return null;
-    }
-
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-
-    }
-
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-
+        try {
+            wallet = Neoutils.generateFromPrivateKey(privateKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+        return true;
     }
 }
 

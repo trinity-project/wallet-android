@@ -19,68 +19,53 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/labelTNAP"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="@string/tnap"
-        android:textSize="16sp"
-        app:layout_constraintRight_toRightOf="@id/labelDeposit"
-        app:layout_constraintTop_toBottomOf="@id/titleAddChannel" />
-
     <EditText
         android:id="@+id/inputTNAP"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:ems="10"
+        android:hint="@string/tnap"
         android:inputType="textNoSuggestions"
         android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="@id/labelTNAP"
-        app:layout_constraintLeft_toRightOf="@id/labelTNAP"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="@id/labelTNAP" />
-
-    <TextView
-        android:id="@+id/labelDeposit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="@string/deposit"
-        android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/labelTNAP" />
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/titleAddChannel" />
 
     <EditText
         android:id="@+id/inputDeposit"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:ems="10"
+        android:hint="@string/deposit"
         android:inputType="textNoSuggestions"
         android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="@id/labelDeposit"
-        app:layout_constraintLeft_toRightOf="@id/labelDeposit"
+        app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="@id/labelDeposit" />
+        app:layout_constraintTop_toBottomOf="@id/inputTNAP" />
 
     <TextView
         android:id="@+id/labelAssets"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
         android:layout_marginTop="@dimen/activity_vertical_margin"
         android:text="@string/assets"
         android:textSize="16sp"
-        app:layout_constraintRight_toRightOf="@id/labelDeposit"
-        app:layout_constraintTop_toBottomOf="@id/labelDeposit" />
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/inputDeposit" />
 
     <RadioGroup
         android:id="@+id/inputAssets"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:autofillHints="@string/assets"
         android:checkedButton="@id/rdoItmTNC"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="@id/labelAssets"
@@ -111,28 +96,20 @@
             android:textSize="16sp" />
     </RadioGroup>
 
-    <TextView
-        android:id="@+id/labelAlias"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="@string/alias"
-        android:textSize="16sp"
-        app:layout_constraintRight_toRightOf="@id/labelDeposit"
-        app:layout_constraintTop_toBottomOf="@id/labelAssets" />
-
     <EditText
         android:id="@+id/inputAlias"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:ems="10"
+        android:hint="@string/alias"
         android:inputType="textNoSuggestions"
         android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="@id/labelAlias"
-        app:layout_constraintLeft_toRightOf="@id/labelAlias"
+        app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="@id/labelAlias" />
+        app:layout_constraintTop_toBottomOf="@id/labelAssets" />
 
     <Button
         android:id="@+id/btnTransferTo"

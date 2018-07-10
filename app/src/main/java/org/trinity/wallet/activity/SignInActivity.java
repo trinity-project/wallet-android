@@ -1,7 +1,6 @@
 package org.trinity.wallet.activity;
 
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -21,11 +20,10 @@ import neoutils.Wallet;
 /**
  * A login screen that offers login via private key.
  */
-public class SignInActivity extends AppCompatActivity {
+public class SignInActivity extends BaseActivity {
     // UI references.
     @BindView(R.id.signInPrivateKey)
     public EditText mPrivateKeyView;
-    private View mLoginFormView;
 
     // Wallet.
     private Wallet wallet;
@@ -35,6 +33,15 @@ public class SignInActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_signin);
         ButterKnife.bind(this);
+
+        // Initialize the back button event.
+        Button back = findViewById(R.id.btnBackLogin);
+        back.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                signInFinish();
+            }
+        });
 
         // Set up the login form.
         mPrivateKeyView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -48,6 +55,7 @@ public class SignInActivity extends AppCompatActivity {
             }
         });
 
+        // Initialize the login button event.
         Button signIn = findViewById(R.id.btnSignIn);
         signIn.setOnClickListener(new OnClickListener() {
             @Override
@@ -55,8 +63,6 @@ public class SignInActivity extends AppCompatActivity {
                 attemptLogin();
             }
         });
-
-        mLoginFormView = findViewById(R.id.login_form);
     }
 
     /**
@@ -86,19 +92,27 @@ public class SignInActivity extends AppCompatActivity {
             // form field with an error.
             focusView.requestFocus();
         } else {
-            // TODO login
+            // Wallet object persistence.
+            getWalletApplication().setWallet(wallet);
+            // Set the login result.
+            setResult(0);
+            // Go back to the main activity.
+            signInFinish();
         }
-
     }
 
     private boolean isPrivateKeyValid(String privateKey) {
         try {
+            // Verify the private key and instantiate the wallet model.
             wallet = Neoutils.generateFromPrivateKey(privateKey);
         } catch (Exception e) {
-            e.printStackTrace();
+            new Exception("User input: Invalid NEO private key.").printStackTrace();
             return false;
         }
         return true;
     }
-}
 
+    private void signInFinish() {
+        SignInActivity.this.finish();
+    }
+}

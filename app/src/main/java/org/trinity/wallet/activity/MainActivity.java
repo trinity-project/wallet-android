@@ -1,8 +1,10 @@
 package org.trinity.wallet.activity;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.CoordinatorLayout;
@@ -10,7 +12,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,24 +24,34 @@ import android.widget.Toast;
 
 import org.trinity.util.HexUtil;
 import org.trinity.wallet.R;
+import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.logic.DevLogic;
 import org.trinity.wallet.logic.IDevCallback;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import neoutils.Wallet;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
+    /**
+     * The activity object.
+     */
+    @SuppressLint("StaticFieldLeak")
+    public static MainActivity currentActivity;
     /**
      * The menu button.
      */
     @BindView(R.id.btnMainMenu)
     public Button mainMenu;
-
     /**
-     * The framework of card views.
+     * The frame of a single card view.
      */
     @BindView(R.id.cardsShell)
     public CoordinatorLayout cardsShell;
+    /**
+     * The total number of cards.
+     */
+    public int cardAccount = 3;
     /**
      * The container of a single card.
      * <p>
@@ -48,6 +59,17 @@ public class MainActivity extends AppCompatActivity {
      */
     @BindView(R.id.cardContainer)
     public ViewPager cardContainer;
+    /**
+     * The adapter of the card group.
+     * <p>
+     * The {@link android.support.v4.view.PagerAdapter} that will provide
+     * fragments for each of the sections. We use a
+     * {@link FragmentPagerAdapter} derivative, which will keep every
+     * loaded fragment in memory. If this becomes too memory intensive, it
+     * may be best to switch to a
+     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
+     */
+    public SectionsPagerAdapter pagerAdapter;
     /**
      * The navigation bar of main tab.
      */
@@ -65,39 +87,48 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.tabRecord)
     public ConstraintLayout tabRecord;
     /**
+     * The application object.
+     */
+    public WalletApplication application;
+    /**
      * The body of dev tab.
      */
     @BindView(R.id.tabDev)
     public ConstraintLayout tabDev;
-    /**
-     * The adapter of the card group.
-     * <p>
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
-     * fragments for each of the sections. We use a
-     * {@link FragmentPagerAdapter} derivative, which will keep every
-     * loaded fragment in memory. If this becomes too memory intensive, it
-     * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
-     */
-    private SectionsPagerAdapter pagerAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        application = getWalletApplication();
+        currentActivity = MainActivity.this;
 
         // Init events of toolbar's menu button click action.
-        initBtnMenu();
-        // Init events of tabs' click action.
-        initTabs();
+        initToolbarMenu();
         // Init events of cards' click action.
         initCards();
+        // Init events of tabs' click action.
+        initTabs();
+
         // #Dev init.
         devInit();
     }
 
-    private void initBtnMenu() {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 0) {
+            postResponse();
+            refreshCardUI();
+        }
+    }
+
+    private void postResponse() {
+        // TODO
+    }
+
+    private void initToolbarMenu() {
         mainMenu.setOnClickListener(new View.OnClickListener() {
             private PopupMenu popupMenu;
 
@@ -112,7 +143,8 @@ public class MainActivity extends AppCompatActivity {
                         int itemId = item.getItemId();
                         switch (itemId) {
                             case R.id.menuSignIn:
-                                startActivity(new Intent(MainActivity.this, SignInActivity.class));
+                                Intent intent = new Intent(MainActivity.this, SignInActivity.class);
+                                startActivityForResult(intent, 0);
                                 break;
                             case R.id.menuScan:
                                 break;
@@ -133,6 +165,15 @@ public class MainActivity extends AppCompatActivity {
                 popupMenu.show();
             }
         });
+    }
+
+    private void initCards() {
+        // Create the adapter that will return a fragment for each of the three
+        // primary sections of the activity.
+        pagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+
+        // Set up the ViewPager with the sections adapter.
+        cardContainer.setAdapter(pagerAdapter);
     }
 
     private void initTabs() {
@@ -171,15 +212,6 @@ public class MainActivity extends AppCompatActivity {
         tabDev.setVisibility(View.GONE);
     }
 
-    private void initCards() {
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
-        pagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
-
-        // Set up the ViewPager with the sections adapter.
-        cardContainer.setAdapter(pagerAdapter);
-    }
-
     @Deprecated
     private void devInit() {
         findViewById(R.id.testNeoUtil).setOnClickListener(new View.OnClickListener() {
@@ -208,6 +240,48 @@ public class MainActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private void refreshCardUI() {
+        View card;
+        for (int cardIndex = 0; cardIndex < cardContainer.getChildCount(); cardIndex++) {
+            card = cardContainer.getChildAt(cardIndex);
+            refreshCardUI(card);
+        }
+    }
+
+    private void refreshCardUI(View view) {
+        Wallet wallet = application.getWallet();
+        if (wallet != null && wallet.getPrivateKey() != null && wallet.getAddress() != null) {
+            View card;
+            TextView cardHeader;
+            TextView cardAddress;
+            TextView chainBalance;
+            TextView channelBalance;
+            card = view;
+            cardHeader = card.findViewById(R.id.cardHeader);
+            chainBalance = card.findViewById(R.id.cardChainBalance);
+            channelBalance = card.findViewById(R.id.cardChannelBalance);
+            String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+            if (split.length > 0) {
+                switch (split[split.length - 1]) {
+                    case "TNC":
+                        chainBalance.setText(application.getChainTNC().toPlainString());
+                        channelBalance.setText(application.getChannelTNC().toPlainString());
+                        break;
+                    case "NEO":
+                        chainBalance.setText(application.getChainNEO().toPlainString());
+                        channelBalance.setText(application.getChannelNEO().toPlainString());
+                        break;
+                    case "GAS":
+                        chainBalance.setText(application.getChainGAS().toPlainString());
+                        channelBalance.setText(application.getChannelGAS().toPlainString());
+                        break;
+                }
+            }
+            cardAddress = card.findViewById(R.id.cardAddress);
+            cardAddress.setText(wallet.getAddress());
+        }
     }
 
     /* ---------------------------------- INNER CLASSES ---------------------------------- */
@@ -242,8 +316,9 @@ public class MainActivity extends AppCompatActivity {
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.fragment_card, container, false);
             ImageView imageView = rootView.findViewById(R.id.cardIcon);
-            TextView textView = rootView.findViewById(R.id.cardTextView);
+            TextView textView = rootView.findViewById(R.id.cardHeader);
             View cardColorFooter = rootView.findViewById(R.id.cardColorFooter);
+
             int cardNo = 0;
             if (getArguments() != null) {
                 cardNo = getArguments().getInt(CARD_NO);
@@ -251,20 +326,21 @@ public class MainActivity extends AppCompatActivity {
             switch (cardNo) {
                 case 1:
                     imageView.setImageResource(R.mipmap.ic_tnc);
-                    textView.setText(getString(R.string.card_text, "TNC"));
+                    textView.setText(getString(R.string.card_text, getString(R.string.tnc)));
                     cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_tnc);
                     break;
                 case 2:
                     imageView.setImageResource(R.mipmap.ic_neo);
-                    textView.setText(getString(R.string.card_text, "NEO"));
+                    textView.setText(getString(R.string.card_text, getString(R.string.neo)));
                     cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_neo);
                     break;
                 case 3:
                     imageView.setImageResource(R.mipmap.ic_gas);
-                    textView.setText(getString(R.string.card_text, "GAS"));
+                    textView.setText(getString(R.string.card_text, getString(R.string.gas)));
                     cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_gas);
                     break;
             }
+            currentActivity.refreshCardUI(rootView);
             return rootView;
         }
     }
@@ -288,8 +364,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            // Show how many total pages.
+            return cardAccount;
         }
     }
 }

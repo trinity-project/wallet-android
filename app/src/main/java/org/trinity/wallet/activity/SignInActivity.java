@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import org.trinity.util.HexUtil;
+import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 
 import butterknife.BindView;
@@ -91,7 +92,7 @@ public class SignInActivity extends BaseActivity {
         });
 
         // If there is no wallet, generate one.
-        Wallet wallet = getWalletApplication().getWallet();
+        Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             try {
                 mPrivateKeyView.setText(HexUtil.byteArrayToHex(Neoutils.newWallet().getPrivateKey()));
@@ -136,9 +137,9 @@ public class SignInActivity extends BaseActivity {
             focusView.requestFocus();
         } else {
             // Wallet object persistence.
-            getWalletApplication().setWallet(wallet);
+            wApp.setWallet(wallet);
             // Set the login result.
-            setResult(0);
+            setResult(ConfigList.SIGN_IN_RESULT);
             // Go back to the main activity.
             signFinish();
         }
@@ -149,9 +150,9 @@ public class SignInActivity extends BaseActivity {
      */
     private void logout() {
         // Wallet object persistence.
-        getWalletApplication().setWallet(null);
+        wApp.setWallet(null);
         // Set the login result.
-        setResult(0);
+        setResult(ConfigList.SIGN_OUT_RESULT);
         // Go back to the main activity.
         signFinish();
     }

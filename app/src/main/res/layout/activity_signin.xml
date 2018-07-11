@@ -69,7 +69,7 @@
                 android:layout_marginTop="@dimen/activity_vertical_margin"
                 android:text="Welcome to your very own instant wallet! You are almost ready to send and receive TNC on the Trinity Network."
                 android:textAlignment="viewStart"
-                android:textSize="16sp" />
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/signInAlertKeepKey"
@@ -81,7 +81,7 @@
                 android:text="Write down your private key to come back to this wallet.\nDo not lose or share this private key. Without it, your wallet will be lost."
                 android:textAlignment="viewStart"
                 android:textColor="#FF0000"
-                android:textSize="16sp" />
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/signInOwnKey"
@@ -93,13 +93,13 @@
                 android:text="If you already have a wallet, you can restore your wallet with your private key that you wrote down when you started up your wallet last time."
                 android:textAlignment="viewStart"
                 android:textColor="#FF0000"
-                android:textSize="16sp" />
+                android:textSize="12sp" />
 
             <android.support.design.widget.TextInputLayout
                 android:id="@+id/signInPrivateKeyLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/activity_vertical_margin">
+                android:layout_marginTop="24dp">
 
                 <EditText
                     android:id="@+id/signInPrivateKey"

@@ -1,25 +1,27 @@
-package org.trinity.util.net.json;
+package org.trinity.wallet.net.json;
 
 import com.alibaba.fastjson.JSON;
 
-import org.trinity.util.net.json.bean.RequestBean;
+import org.trinity.wallet.WalletApplication;
+import org.trinity.wallet.net.json.bean.RequestBean;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-public final class JSONRpcClient extends AbstractJSONClient {
-    public static final String MAIN_NET_URL = "http://47.93.214.2:21332";
-    public static final String TEST_NET_URL = "http://47.254.64.251:21332";
+import okhttp3.Callback;
 
-    private String url = MAIN_NET_URL;
+public final class JSONRpcClient extends AbstractJSONClient {
+
+    private String url;
     private String json;
 
     JSONRpcClient(Builder builder) {
+        this.url = WalletApplication.getNetUrl();
         this.json = JSON.toJSONString(builder.requestBean);
     }
 
-    public String post() throws IOException {
-        return post(url, json);
+    public void post(Callback callback) throws IOException {
+        post(url, json, callback);
     }
 
     public static final class Builder {

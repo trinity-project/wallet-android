@@ -2,22 +2,55 @@ package org.trinity.wallet;
 
 import android.app.Application;
 
+import org.trinity.wallet.entity.ChannelBean;
+import org.trinity.wallet.entity.RecordBean;
+
 import java.math.BigDecimal;
+import java.util.List;
 
 import neoutils.Wallet;
 
 public class WalletApplication extends Application {
     /**
+     * The net url of neo.
+     */
+    private static String netUrl;
+    private static WalletApplication instance;
+    /**
      * This is the NEO wallet model.
      */
     private Wallet wallet;
-
     private BigDecimal chainTNC = BigDecimal.ZERO;
     private BigDecimal channelTNC = BigDecimal.ZERO;
     private BigDecimal chainNEO = BigDecimal.ZERO;
     private BigDecimal channelNEO = BigDecimal.ZERO;
     private BigDecimal chainGAS = BigDecimal.ZERO;
     private BigDecimal channelGAS = BigDecimal.ZERO;
+    private List<ChannelBean> channelList;
+    private List<RecordBean> recordList;
+
+    public static String getNetUrl() {
+        return netUrl;
+    }
+
+    public static WalletApplication getInstance() {
+        return instance;
+    }
+
+    public static void setInstance(WalletApplication instance) {
+        WalletApplication.instance = instance;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
+        switchNetUrl(ConfigList.MAIN_NET_URL);
+    }
+
+    public void switchNetUrl(String netUrl) {
+        WalletApplication.netUrl = netUrl;
+    }
 
     public Wallet getWallet() {
         return wallet;
@@ -74,4 +107,21 @@ public class WalletApplication extends Application {
     public void setChannelGAS(BigDecimal channelGAS) {
         this.channelGAS = channelGAS;
     }
+
+    public List<ChannelBean> getChannelList() {
+        return channelList;
+    }
+
+    public void setChannelList(List<ChannelBean> channelList) {
+        this.channelList = channelList;
+    }
+
+    public List<RecordBean> getRecordList() {
+        return recordList;
+    }
+
+    public void setRecordList(List<RecordBean> recordList) {
+        this.recordList = recordList;
+    }
 }
+

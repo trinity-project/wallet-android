@@ -1,4 +1,4 @@
-package org.trinity.util.net.json.bean;
+package org.trinity.wallet.net.json.bean;
 
 public class GetBalanceBean {
     private int id;

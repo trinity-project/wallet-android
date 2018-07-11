@@ -1,12 +1,11 @@
-package org.trinity.util.net.json.bean;
+package org.trinity.wallet.net.json.bean;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public final class RequestBean {
     private String jsonrpc = "2.0";
     private String method;
-    private List<String> params = new ArrayList<>();
+    private List<String> params;
     private int id = 1;
 
     public String getJsonrpc() {

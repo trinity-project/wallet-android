@@ -36,9 +36,11 @@
     <!-- Strings related to login -->
     <string name="btn_sign_in">SIGN IN</string>
     <string name="error_invalid_private_key">Invalid private key.</string>
-    <string name="main_menu_sign_in">Sign In</string>
+    <string name="main_menu_me">Me</string>
     <string name="main_menu_scan">Scan</string>
     <string name="main_menu_switch_net">Switch Net</string>
     <string name="main_menu_main_net">Main Net</string>
     <string name="main_menu_test_net">Test Net</string>
+    <string name="btn_sign_out">SIGN OUT</string>
+    <string name="private_key">Private Key</string>
 </resources>

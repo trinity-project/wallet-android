@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <group>
         <item
-            android:id="@+id/menuSignIn"
-            android:title="@string/main_menu_sign_in" />
+            android:id="@+id/menuMe"
+            android:title="@string/main_menu_me" />
         <item
             android:id="@+id/menuScan"
             android:title="@string/main_menu_scan" />

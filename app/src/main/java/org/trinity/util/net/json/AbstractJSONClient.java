@@ -1,6 +1,4 @@
-package org.trinity.util.net;
-
-import org.json.JSONObject;
+package org.trinity.util.net.json;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -12,16 +10,16 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-public abstract class AbstractJSONRpcClient {
+abstract class AbstractJSONClient {
     private final OkHttpClient client = new OkHttpClient.Builder()
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(2, TimeUnit.SECONDS)
+            .writeTimeout(2, TimeUnit.SECONDS)
             .connectTimeout(2, TimeUnit.SECONDS)
             .build();
     private final MediaType MEDIA_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    public String post(String url, JSONObject json) throws IOException {
-        RequestBody requestBody = RequestBody.create(MEDIA_TYPE, json.toString());
+    public String post(String url, String json) throws IOException {
+        RequestBody requestBody = RequestBody.create(MEDIA_TYPE, json);
         Request request = new Request.Builder()
                 .url(url)
                 .post(requestBody)
@@ -31,6 +29,7 @@ public abstract class AbstractJSONRpcClient {
             throw new IOException("Unexpected code " + response);
         }
         ResponseBody responseBody = response.body();
-        return responseBody != null ? responseBody.string() : null;
+        if (responseBody != null) return responseBody.string();
+        else return null;
     }
 }

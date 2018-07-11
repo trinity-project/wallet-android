@@ -22,11 +22,18 @@ import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.alibaba.fastjson.JSON;
+
 import org.trinity.util.HexUtil;
+import org.trinity.util.net.json.JSONRpcClient;
+import org.trinity.util.net.json.bean.GetBalanceBean;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.logic.DevLogic;
 import org.trinity.wallet.logic.IDevCallback;
+
+import java.io.IOException;
+import java.math.BigDecimal;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -119,13 +126,25 @@ public class MainActivity extends BaseActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 0) {
-            postResponse();
+            postGetBalance();
             refreshCardUI();
         }
     }
 
-    private void postResponse() {
+    private void postGetBalance() {
         // TODO
+        Wallet wallet = application.getWallet();
+        JSONRpcClient client = new JSONRpcClient.Builder().method("getBalance").params(wallet.getAddress()).build();
+        try {
+            String response = client.post();
+            GetBalanceBean responseBean = JSON.parseObject(response, GetBalanceBean.class);
+            application.setChainTNC(BigDecimal.valueOf(responseBean.getResult().getTncBalance()));
+            application.setChainNEO(BigDecimal.valueOf(responseBean.getResult().getNeoBalance()));
+            application.setChainGAS(BigDecimal.valueOf(responseBean.getResult().getGasBalance()));
+        } catch (IOException e) {
+            e.printStackTrace();
+            //TODO Time out ect.
+        }
     }
 
     private void initToolbarMenu() {
@@ -142,7 +161,7 @@ public class MainActivity extends BaseActivity {
                         CharSequence title = item.getTitle();
                         int itemId = item.getItemId();
                         switch (itemId) {
-                            case R.id.menuSignIn:
+                            case R.id.menuMe:
                                 Intent intent = new Intent(MainActivity.this, SignInActivity.class);
                                 startActivityForResult(intent, 0);
                                 break;
@@ -252,35 +271,33 @@ public class MainActivity extends BaseActivity {
 
     private void refreshCardUI(View view) {
         Wallet wallet = application.getWallet();
-        if (wallet != null && wallet.getPrivateKey() != null && wallet.getAddress() != null) {
-            View card;
-            TextView cardHeader;
-            TextView cardAddress;
-            TextView chainBalance;
-            TextView channelBalance;
-            card = view;
-            cardHeader = card.findViewById(R.id.cardHeader);
-            chainBalance = card.findViewById(R.id.cardChainBalance);
-            channelBalance = card.findViewById(R.id.cardChannelBalance);
-            String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
-            if (split.length > 0) {
-                switch (split[split.length - 1]) {
-                    case "TNC":
-                        chainBalance.setText(application.getChainTNC().toPlainString());
-                        channelBalance.setText(application.getChannelTNC().toPlainString());
-                        break;
-                    case "NEO":
-                        chainBalance.setText(application.getChainNEO().toPlainString());
-                        channelBalance.setText(application.getChannelNEO().toPlainString());
-                        break;
-                    case "GAS":
-                        chainBalance.setText(application.getChainGAS().toPlainString());
-                        channelBalance.setText(application.getChannelGAS().toPlainString());
-                        break;
-                }
-            }
-            cardAddress = card.findViewById(R.id.cardAddress);
+        TextView cardHeader = view.findViewById(R.id.cardHeader);
+        TextView chainBalance = view.findViewById(R.id.cardChainBalance);
+        TextView channelBalance = view.findViewById(R.id.cardChannelBalance);
+        TextView cardAddress = view.findViewById(R.id.cardAddress);
+
+        if (wallet == null) {
+            cardAddress.setText(getString(R.string.please_login));
+        } else if (wallet.getPrivateKey() != null && wallet.getAddress() != null) {
             cardAddress.setText(wallet.getAddress());
+        }
+
+        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+        if (split.length > 0) {
+            switch (split[split.length - 1]) {
+                case "TNC":
+                    chainBalance.setText(application.getChainTNC().toPlainString());
+                    channelBalance.setText(application.getChannelTNC().toPlainString());
+                    break;
+                case "NEO":
+                    chainBalance.setText(application.getChainNEO().toPlainString());
+                    channelBalance.setText(application.getChannelNEO().toPlainString());
+                    break;
+                case "GAS":
+                    chainBalance.setText(application.getChainGAS().toPlainString());
+                    channelBalance.setText(application.getChannelGAS().toPlainString());
+                    break;
+            }
         }
     }
 

@@ -1,5 +1,7 @@
 package org.trinity.wallet.activity;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -10,6 +12,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import org.trinity.util.HexUtil;
 import org.trinity.wallet.R;
 
 import butterknife.BindView;
@@ -39,7 +42,7 @@ public class SignInActivity extends BaseActivity {
         back.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                signInFinish();
+                signFinish();
             }
         });
 
@@ -55,6 +58,7 @@ public class SignInActivity extends BaseActivity {
             }
         });
 
+
         // Initialize the login button event.
         Button signIn = findViewById(R.id.btnSignIn);
         signIn.setOnClickListener(new OnClickListener() {
@@ -63,11 +67,50 @@ public class SignInActivity extends BaseActivity {
                 attemptLogin();
             }
         });
+
+        // Initialize the logout button event.
+        Button signOut = findViewById(R.id.btnSignOut);
+        signOut.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                new AlertDialog.Builder(SignInActivity.this).setTitle("SIGN OUT")
+                        .setIcon(android.R.drawable.ic_dialog_alert)
+                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                logout();
+                            }
+                        })
+                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                // Do nothing here.
+                            }
+                        }).show();
+            }
+        });
+
+        // If there is no wallet, generate one.
+        Wallet wallet = getWalletApplication().getWallet();
+        if (wallet == null) {
+            try {
+                mPrivateKeyView.setText(HexUtil.byteArrayToHex(Neoutils.newWallet().getPrivateKey()));
+            } catch (Exception ignored) {
+            }
+        } else {
+            findViewById(R.id.signInWelcome).setVisibility(View.GONE);
+            findViewById(R.id.signInWelcomeLong).setVisibility(View.GONE);
+            findViewById(R.id.signInOwnKey).setVisibility(View.GONE);
+            mPrivateKeyView.setVisibility(View.GONE);
+            signIn.setVisibility(View.GONE);
+            signOut.setVisibility(View.VISIBLE);
+        }
+
     }
 
     /**
-     * Attempts to sign in or register the account specified by the login form.
-     * If there are form errors (invalid email, missing fields, etc.), the
+     * Attempts to sign in the account specified by the login form.
+     * If there are form errors (invalid private key, missing fields, etc.), the
      * errors are presented and no actual login attempt is made.
      */
     private void attemptLogin() {
@@ -97,8 +140,20 @@ public class SignInActivity extends BaseActivity {
             // Set the login result.
             setResult(0);
             // Go back to the main activity.
-            signInFinish();
+            signFinish();
         }
+    }
+
+    /**
+     * Sign out.
+     */
+    private void logout() {
+        // Wallet object persistence.
+        getWalletApplication().setWallet(null);
+        // Set the login result.
+        setResult(0);
+        // Go back to the main activity.
+        signFinish();
     }
 
     private boolean isPrivateKeyValid(String privateKey) {
@@ -112,7 +167,7 @@ public class SignInActivity extends BaseActivity {
         return true;
     }
 
-    private void signInFinish() {
+    private void signFinish() {
         SignInActivity.this.finish();
     }
 }

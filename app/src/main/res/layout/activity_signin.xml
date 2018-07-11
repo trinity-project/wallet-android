@@ -3,7 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".activity.SignInActivity">
 
     <Toolbar
         android:id="@+id/toolbarLogin"
@@ -22,13 +23,16 @@
                 android:layout_height="24dp"
                 android:layout_marginEnd="@dimen/activity_horizontal_margin"
                 android:background="@drawable/ic_more_vertical_24dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
         </android.support.constraint.ConstraintLayout>
     </Toolbar>
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/login_form"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:gravity="center_horizontal"
@@ -39,45 +43,93 @@
         android:paddingTop="@dimen/activity_vertical_margin"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/toolbarLogin"
-        tools:context=".activity.SignInActivity">
+        app:layout_constraintTop_toBottomOf="@id/toolbarLogin">
 
-        <ScrollView
-            android:id="@+id/login_form"
+        <LinearLayout
+            android:id="@+id/email_login_form"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-            <LinearLayout
-                android:id="@+id/email_login_form"
+            <TextView
+                android:id="@+id/signInWelcome"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:layout_marginStart="@dimen/activity_horizontal_margin"
+                android:text="Welcome to Trinity Wallet!"
+                android:textAlignment="viewStart"
+                android:textSize="28sp" />
 
-                <android.support.design.widget.TextInputLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+            <TextView
+                android:id="@+id/signInWelcomeLong"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/activity_horizontal_margin"
+                android:layout_marginStart="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:text="Welcome to your very own instant wallet! You are almost ready to send and receive TNC on the Trinity Network."
+                android:textAlignment="viewStart"
+                android:textSize="16sp" />
 
-                    <EditText
-                        android:id="@+id/signInPrivateKey"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="Private Key"
-                        android:inputType="textNoSuggestions"
-                        android:maxLines="1"
-                        android:text="23f848fa529bc07b61ff1d9918de06c6da1c88ff2a39513b8bc19910394e52fb"
-                        android:textSize="16sp" />
-                </android.support.design.widget.TextInputLayout>
+            <TextView
+                android:id="@+id/signInAlertKeepKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/activity_horizontal_margin"
+                android:layout_marginStart="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:text="Write down your private key to come back to this wallet.\nDo not lose or share this private key. Without it, your wallet will be lost."
+                android:textAlignment="viewStart"
+                android:textColor="#FF0000"
+                android:textSize="16sp" />
 
-                <Button
-                    android:id="@+id/btnSignIn"
-                    style="?android:textAppearanceSmall"
+            <TextView
+                android:id="@+id/signInOwnKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/activity_horizontal_margin"
+                android:layout_marginStart="@dimen/activity_horizontal_margin"
+                android:layout_marginTop="@dimen/activity_vertical_margin"
+                android:text="If you already have a wallet, you can restore your wallet with your private key that you wrote down when you started up your wallet last time."
+                android:textAlignment="viewStart"
+                android:textColor="#FF0000"
+                android:textSize="16sp" />
+
+            <android.support.design.widget.TextInputLayout
+                android:id="@+id/signInPrivateKeyLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_vertical_margin">
+
+                <EditText
+                    android:id="@+id/signInPrivateKey"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:text="@string/btn_sign_in"
-                    android:textStyle="bold" />
-            </LinearLayout>
-        </ScrollView>
-    </LinearLayout>
+                    android:hint="@string/private_key"
+                    android:inputType="textNoSuggestions"
+                    android:maxLines="1"
+                    android:textSize="10sp"
+                    tools:ignore="SmallSp" />
+            </android.support.design.widget.TextInputLayout>
 
+            <Button
+                android:id="@+id/btnSignIn"
+                style="?android:textAppearanceSmall"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/btn_sign_in"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnSignOut"
+                style="?android:textAppearanceSmall"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/btn_sign_out"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
+    </ScrollView>
 </android.support.constraint.ConstraintLayout>

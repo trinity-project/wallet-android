@@ -1,15 +1,15 @@
 package org.trinity.wallet.net.json.bean;
 
 public class ConstructTxBean {
-    private int id;
+    private String id;
     private String jsonrpc;
     private ResultBean result;
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 

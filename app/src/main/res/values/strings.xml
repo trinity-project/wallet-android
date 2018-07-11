@@ -18,7 +18,7 @@
     <string name="card_icon">cardIcon</string>
     <string name="record">RECORD</string>
     <string name="transfer">TRANSFER</string>
-    <string name="transfer_input_label">Payment Code/Receiver\'s Address:</string>
+    <string name="transfer_input_label">Payment Code/Receiver\'s Address</string>
     <string name="add_channel">ADD CHANNEL</string>
     <string name="tnap">TNAP</string>
     <string name="deposit">Deposit</string>
@@ -36,7 +36,7 @@
     <!-- Strings related to login -->
     <string name="btn_sign_in">SIGN IN</string>
     <string name="error_invalid_private_key">Invalid private key.</string>
-    <string name="main_menu_me">Me</string>
+    <string name="main_menu_account">Account</string>
     <string name="main_menu_scan">Scan</string>
     <string name="main_menu_switch_net">Switch Net</string>
     <string name="main_menu_main_net">Main Net</string>

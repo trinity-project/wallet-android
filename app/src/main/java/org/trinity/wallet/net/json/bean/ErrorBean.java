@@ -1,9 +1,9 @@
 package org.trinity.wallet.net.json.bean;
 
-public class SendrawtransactionBean {
+public class ErrorBean {
     private String id;
     private String jsonrpc;
-    private String result;
+    private Object error;
 
     public String getId() {
         return id;
@@ -21,11 +21,11 @@ public class SendrawtransactionBean {
         this.jsonrpc = jsonrpc;
     }
 
-    public String isResult() {
-        return result;
+    public Object getError() {
+        return error;
     }
 
-    public void setResult(String result) {
-        this.result = result;
+    public void setError(Object error) {
+        this.error = error;
     }
 }

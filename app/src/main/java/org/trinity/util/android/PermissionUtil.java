@@ -1,4 +1,4 @@
-package org.trinity.util.android.permission;
+package org.trinity.util.android;
 
 import android.Manifest;
 import android.app.Activity;

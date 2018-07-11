@@ -22,9 +22,9 @@ abstract class AbstractJSONClient {
                 .build();
     }
 
-    private final MediaType MEDIA_TYPE = MediaType.parse("wApp/json; charset=utf-8");
+    private final MediaType MEDIA_TYPE = MediaType.parse(ConfigList.CLIENT_MEDIA_TYPE);
 
-    void post(String url, String json, Callback callback) throws IOException {
+    void post(String url, String json, Callback callback) {
         RequestBody requestBody = RequestBody.create(MEDIA_TYPE, json);
         Request request = new Request.Builder()
                 .url(url)

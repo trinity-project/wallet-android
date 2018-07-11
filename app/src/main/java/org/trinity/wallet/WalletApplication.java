@@ -10,7 +10,7 @@ import java.util.List;
 
 import neoutils.Wallet;
 
-public class WalletApplication extends Application {
+public final class WalletApplication extends Application {
     /**
      * The net url of neo.
      */
@@ -20,12 +20,12 @@ public class WalletApplication extends Application {
      * This is the NEO wallet model.
      */
     private Wallet wallet;
-    private BigDecimal chainTNC = BigDecimal.ZERO;
-    private BigDecimal channelTNC = BigDecimal.ZERO;
-    private BigDecimal chainNEO = BigDecimal.ZERO;
-    private BigDecimal channelNEO = BigDecimal.ZERO;
-    private BigDecimal chainGAS = BigDecimal.ZERO;
-    private BigDecimal channelGAS = BigDecimal.ZERO;
+    private BigDecimal chainTNC;
+    private BigDecimal channelTNC;
+    private BigDecimal chainNEO;
+    private BigDecimal channelNEO;
+    private BigDecimal chainGAS;
+    private BigDecimal channelGAS;
     private List<ChannelBean> channelList;
     private List<RecordBean> recordList;
 

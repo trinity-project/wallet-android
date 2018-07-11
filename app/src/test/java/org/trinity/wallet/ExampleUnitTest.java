@@ -1,12 +1,9 @@
 package org.trinity.wallet;
 
 import org.junit.Test;
-import org.trinity.util.HexUtil;
 
-import neoutils.Neoutils;
-import neoutils.Wallet;
-
-import static org.junit.Assert.assertEquals;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -16,6 +13,14 @@ import static org.junit.Assert.assertEquals;
 public class ExampleUnitTest {
     @Test
     public void addition_isCorrect() {
-        assertEquals(4, 2 + 2);
+
+
+        Object i = 1;
+        Map<String, String> map = (HashMap<String, String>) i;
+
+        map.get("result");
+
+
+
     }
 }

@@ -5,7 +5,6 @@ import com.alibaba.fastjson.JSON;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.json.bean.RequestBean;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 import okhttp3.Callback;
@@ -20,28 +19,30 @@ public final class JSONRpcClient extends AbstractJSONClient {
         this.json = JSON.toJSONString(builder.requestBean);
     }
 
-    public void post(Callback callback) throws IOException {
+    public void post(Callback callback) {
         post(url, json, callback);
     }
 
     public static final class Builder {
         RequestBean requestBean;
-        String method;
-        String[] params;
 
         public Builder() {
             requestBean = new RequestBean();
+            requestBean.setId("1");
         }
 
         public Builder method(String method) {
             requestBean.setMethod(method);
-            this.method = method;
             return this;
         }
 
         public Builder params(String... params) {
             requestBean.setParams(Arrays.asList(params));
-            this.params = params;
+            return this;
+        }
+
+        public Builder id(String id) {
+            requestBean.setId(id);
             return this;
         }
 

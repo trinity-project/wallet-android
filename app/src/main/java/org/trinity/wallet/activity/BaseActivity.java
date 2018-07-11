@@ -8,7 +8,7 @@ import org.trinity.wallet.WalletApplication;
 
 public abstract class BaseActivity extends AppCompatActivity {
     /**
-     * The wApp object.
+     * The WalletApplication object.
      */
     public static WalletApplication wApp;
 

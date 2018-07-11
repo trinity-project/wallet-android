@@ -6,7 +6,7 @@ public final class RequestBean {
     private String jsonrpc = "2.0";
     private String method;
     private List<String> params;
-    private int id = 1;
+    private String id;
 
     public String getJsonrpc() {
         return jsonrpc;
@@ -32,11 +32,11 @@ public final class RequestBean {
         this.params = params;
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 }

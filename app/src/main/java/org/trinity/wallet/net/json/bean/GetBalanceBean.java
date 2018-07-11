@@ -1,15 +1,17 @@
 package org.trinity.wallet.net.json.bean;
 
+import java.math.BigDecimal;
+
 public class GetBalanceBean {
-    private int id;
+    private String id;
     private String jsonrpc;
     private ResultBean result;
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -30,31 +32,31 @@ public class GetBalanceBean {
     }
 
     public static class ResultBean {
-        private double gasBalance;
-        private int neoBalance;
-        private int tncBalance;
+        private String gasBalance;
+        private String neoBalance;
+        private String tncBalance;
 
-        public double getGasBalance() {
+        public String getGasBalance() {
             return gasBalance;
         }
 
-        public void setGasBalance(double gasBalance) {
+        public void setGasBalance(String gasBalance) {
             this.gasBalance = gasBalance;
         }
 
-        public int getNeoBalance() {
+        public String getNeoBalance() {
             return neoBalance;
         }
 
-        public void setNeoBalance(int neoBalance) {
+        public void setNeoBalance(String neoBalance) {
             this.neoBalance = neoBalance;
         }
 
-        public int getTncBalance() {
+        public String getTncBalance() {
             return tncBalance;
         }
 
-        public void setTncBalance(int tncBalance) {
+        public void setTncBalance(String tncBalance) {
             this.tncBalance = tncBalance;
         }
     }

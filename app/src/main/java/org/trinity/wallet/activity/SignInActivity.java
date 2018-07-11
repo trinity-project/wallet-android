@@ -59,7 +59,6 @@ public class SignInActivity extends BaseActivity {
             }
         });
 
-
         // Initialize the login button event.
         Button signIn = findViewById(R.id.btnSignIn);
         signIn.setOnClickListener(new OnClickListener() {
@@ -99,7 +98,6 @@ public class SignInActivity extends BaseActivity {
             } catch (Exception ignored) {
             }
         } else {
-            findViewById(R.id.signInWelcome).setVisibility(View.GONE);
             findViewById(R.id.signInWelcomeLong).setVisibility(View.GONE);
             findViewById(R.id.signInOwnKey).setVisibility(View.GONE);
             mPrivateKeyView.setVisibility(View.GONE);

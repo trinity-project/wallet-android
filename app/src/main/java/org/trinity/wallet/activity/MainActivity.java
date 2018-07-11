@@ -25,12 +25,13 @@ import android.widget.Toast;
 import com.alibaba.fastjson.JSON;
 
 import org.trinity.util.HexUtil;
-import org.trinity.util.android.permission.PermissionUtil;
+import org.trinity.util.UIStringUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.logic.DevLogic;
 import org.trinity.wallet.logic.IDevCallback;
 import org.trinity.wallet.net.json.JSONRpcClient;
+import org.trinity.wallet.net.json.JSONRpcErrorUtil;
 import org.trinity.wallet.net.json.bean.GetBalanceBean;
 
 import java.io.IOException;
@@ -49,7 +50,7 @@ public class MainActivity extends BaseActivity {
      * The activity object.
      */
     @SuppressLint("StaticFieldLeak")
-    public static MainActivity mainActivity;
+    public static MainActivity instance;
     /**
      * The menu button.
      */
@@ -103,13 +104,17 @@ public class MainActivity extends BaseActivity {
      */
     @BindView(R.id.tabDev)
     public ConstraintLayout tabDev;
+    /**
+     * The lock for post requests witch gets balance.
+     */
+    private transient int retryTimesNow = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        mainActivity = MainActivity.this;
+        instance = MainActivity.this;
 
         // Init events of toolbar's menu button click action.
         initToolbarMenu();
@@ -117,6 +122,8 @@ public class MainActivity extends BaseActivity {
         initCards();
         // Init events of tabs' click action.
         initTabs();
+        // Init account data.
+        postGetBalance();
 
         // #Dev init.
         devInit();
@@ -125,58 +132,100 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == ConfigList.SIGN_IN_RESULT) {
+        if (resultCode == ConfigList.SIGN_IN_RESULT) {
+            refreshCardUI();
+            Toast.makeText(getBaseContext(), "Connecting chain. Your balance will show in a few seconds.", Toast.LENGTH_LONG).show();
             postGetBalance();
-        } else if (requestCode == ConfigList.SIGN_OUT_RESULT) {
+        } else if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
         }
     }
 
-    private void postGetBalance() {
-        // TODO
+    private synchronized void postGetBalance() {
+        // TODO on channel value.
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    Wallet wallet = wApp.getWallet();
-                    JSONRpcClient client = new JSONRpcClient.Builder()
-                            .method("getBalance")
-                            .params(wallet.getAddress())
-                            .build();
-                    PermissionUtil.verifyStoragePermissions(MainActivity.this);
-                    client.post(
-                            new Callback() {
-                                @Override
-                                public void onFailure(Call call, IOException e) {
-                                    e.printStackTrace();
-                                }
+                Wallet wallet = wApp.getWallet();
 
-                                @Override
-                                public void onResponse(Call call, Response response) throws IOException {
-                                    final GetBalanceBean responseBean;
-                                    ResponseBody responseBody = response.body();
-                                    if (responseBody != null) {
-                                        responseBean = JSON.parseObject(responseBody.string(), GetBalanceBean.class);
-                                        wApp.setChainTNC(BigDecimal.valueOf(responseBean.getResult().getTncBalance()));
-                                        wApp.setChainNEO(BigDecimal.valueOf(responseBean.getResult().getNeoBalance()));
-                                        wApp.setChainGAS(BigDecimal.valueOf(responseBean.getResult().getGasBalance()));
-                                        runOnUiThread(
-                                                new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        refreshCardUI();
-                                                    }
-                                                }
-                                        );
+                if (wallet == null) {
+                    return;
+                }
+                JSONRpcClient client = new JSONRpcClient.Builder()
+                        .method("getBalance")
+                        .params(wallet.getAddress())
+                        .id("1")
+                        .build();
+                client.post(
+                        new Callback() {
+                            @Override
+                            public void onFailure(Call call, IOException e) {
+                                e.printStackTrace();
+                                jsonRpcErrorOccur(true);
+                            }
+
+                            @Override
+                            public void onResponse(Call call, Response response) throws IOException {
+                                final GetBalanceBean responseBean;
+                                ResponseBody responseBody = response.body();
+                                if (responseBody != null) {
+                                    String body = responseBody.string();
+                                    if (MainActivity.this.jsonRpcErrorOccur(body)) {
+                                        return;
                                     }
+                                    responseBean = JSON.parseObject(body, GetBalanceBean.class);
+                                    wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
+                                    wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
+                                    wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
+                                    runOnUiThread(
+                                            new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    refreshCardUI();
+                                                }
+                                            }
+                                    );
+                                }
+                            }
+                        }
+                );
+            }
+        }, "MainActivity::postGetBalance").start();
+    }
+
+    private boolean jsonRpcErrorOccur(String body) {
+        // TODO Cover the try times method with interface.
+        return jsonRpcErrorOccur(JSONRpcErrorUtil.hasError(body));
+    }
+
+    private boolean jsonRpcErrorOccur(boolean hasError) {
+        synchronized (this) {
+            boolean triedForTimes = retryTimesNow == ConfigList.RETRY_TIMES;
+            if (!hasError || triedForTimes) {
+                retryTimesNow = 0;
+                if (triedForTimes) {
+                    runOnUiThread(
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    Toast.makeText(getBaseContext(), "Internal server exception occurred. Please try again later or contact the administrator.", Toast.LENGTH_LONG).show();
                                 }
                             }
                     );
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
+            } else {
+                retryTimesNow++;
+                runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                postGetBalance();
+                            }
+                        }
+                );
             }
-        }, "MainActivity::postGetBalance").start();
+            return hasError;
+        }
     }
 
     private void initToolbarMenu() {
@@ -193,7 +242,7 @@ public class MainActivity extends BaseActivity {
                         CharSequence title = item.getTitle();
                         int itemId = item.getItemId();
                         switch (itemId) {
-                            case R.id.menuMe:
+                            case R.id.menuAccount:
                                 Intent intent = new Intent(MainActivity.this, SignInActivity.class);
                                 startActivityForResult(intent, 0);
                                 break;
@@ -206,10 +255,12 @@ public class MainActivity extends BaseActivity {
                             case R.id.menuMainNet:
                                 wApp.switchNetUrl(ConfigList.MAIN_NET_URL);
                                 Toast.makeText(getBaseContext(), "Switched to: " + title, Toast.LENGTH_LONG).show();
+                                postGetBalance();
                                 break;
                             case R.id.menuTestNet:
                                 wApp.switchNetUrl(ConfigList.TEST_NET_URL);
                                 Toast.makeText(getBaseContext(), "Switched to: " + title, Toast.LENGTH_LONG).show();
+                                postGetBalance();
                                 break;
                         }
                         return true;
@@ -312,25 +363,28 @@ public class MainActivity extends BaseActivity {
 
         if (wallet == null) {
             cardAddress.setText(getString(R.string.please_login));
-        } else if (wallet.getPrivateKey() != null && wallet.getAddress() != null) {
-            cardAddress.setText(wallet.getAddress());
+            return;
         }
 
-        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
-        if (split.length > 0) {
-            switch (split[split.length - 1]) {
-                case "TNC":
-                    chainBalance.setText(wApp.getChainTNC().toPlainString());
-                    channelBalance.setText(wApp.getChannelTNC().toPlainString());
-                    break;
-                case "NEO":
-                    chainBalance.setText(wApp.getChainNEO().toPlainString());
-                    channelBalance.setText(wApp.getChannelNEO().toPlainString());
-                    break;
-                case "GAS":
-                    chainBalance.setText(wApp.getChainGAS().toPlainString());
-                    channelBalance.setText(wApp.getChannelGAS().toPlainString());
-                    break;
+        if (wallet.getPrivateKey() != null && wallet.getAddress() != null) {
+            cardAddress.setText(wallet.getAddress());
+
+            String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+            if (split.length > 0) {
+                switch (split[split.length - 1]) {
+                    case "TNC":
+                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
+                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
+                        break;
+                    case "NEO":
+                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
+                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
+                        break;
+                    case "GAS":
+                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
+                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
+                        break;
+                }
             }
         }
     }
@@ -391,7 +445,7 @@ public class MainActivity extends BaseActivity {
                     cardColorFooter.setBackgroundResource(R.drawable.shape_corner_down_gas);
                     break;
             }
-            mainActivity.refreshCardUI(rootView);
+            instance.refreshCardUI(rootView);
             return rootView;
         }
     }

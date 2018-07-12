@@ -40,17 +40,88 @@
             android:textSize="16sp" />
     </android.support.design.widget.TextInputLayout>
 
+    <android.support.design.widget.TextInputLayout
+        android:id="@+id/layAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layTransferTo">
+
+        <EditText
+            android:id="@+id/inputAmount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ems="10"
+            android:hint="@string/amount"
+            android:inputType="numberDecimal"
+            android:textSize="16sp" />
+    </android.support.design.widget.TextInputLayout>
+
+
+    <TextView
+        android:id="@+id/labelAssetsTrans"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="22dp"
+        android:text="@string/assets"
+        android:textSize="16sp"
+        android:visibility="gone"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/layAmount" />
+
+    <RadioGroup
+        android:id="@+id/inputAssetsTrans"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:checkedButton="@id/rdoItmTNC"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/labelAssetsTrans"
+        app:layout_constraintLeft_toRightOf="@id/labelAssetsTrans"
+        app:layout_constraintTop_toTopOf="@id/labelAssetsTrans">
+
+        <RadioButton
+            android:id="@+id/rdoItmTNC"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/tnc"
+            android:textSize="16sp" />
+
+        <RadioButton
+            android:id="@+id/rdoItmNEO"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:text="@string/neo"
+            android:textSize="16sp" />
+
+        <RadioButton
+            android:id="@+id/rdoItmGAS"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:text="@string/gas"
+            android:textSize="16sp" />
+    </RadioGroup>
+
     <Button
         android:id="@+id/btnTransferTo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:ems="8"
         android:text="@string/transfer_btn"
         android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/layTransferTo" />
+        app:layout_constraintTop_toBottomOf="@id/labelAssetsTrans" />
 </android.support.constraint.ConstraintLayout>

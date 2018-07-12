@@ -3,7 +3,7 @@ package org.trinity.wallet.net.json.bean;
 public class SendrawtransactionBean {
     private String id;
     private String jsonrpc;
-    private String result;
+    private boolean result;
 
     public String getId() {
         return id;
@@ -21,11 +21,11 @@ public class SendrawtransactionBean {
         this.jsonrpc = jsonrpc;
     }
 
-    public String isResult() {
+    public boolean isResult() {
         return result;
     }
 
-    public void setResult(String result) {
+    public void setResult(boolean result) {
         this.result = result;
     }
 }

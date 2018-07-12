@@ -149,6 +149,7 @@ public class SignInActivity extends BaseActivity {
     private void logout() {
         // Wallet object persistence.
         wApp.setWallet(null);
+        wApp.clearBalance();
         // Set the login result.
         setResult(ConfigList.SIGN_OUT_RESULT);
         // Go back to the main activity.

@@ -9,14 +9,17 @@ import java.util.Arrays;
 
 import okhttp3.Callback;
 
-public final class JSONRpcClient extends AbstractJSONClient {
+public class JSONRpcClient extends AbstractJSONClient {
 
     private String url;
     private String json;
 
     JSONRpcClient(Builder builder) {
-        this.url = WalletApplication.getNetUrl();
+        this.url = builder.netUrl;
         this.json = JSON.toJSONString(builder.requestBean);
+        if (url == null || "".equals(url.trim())) {
+            url = WalletApplication.getNetUrl();
+        }
     }
 
     public void post(Callback callback) {
@@ -24,11 +27,17 @@ public final class JSONRpcClient extends AbstractJSONClient {
     }
 
     public static final class Builder {
+        String netUrl;
         RequestBean requestBean;
 
         public Builder() {
             requestBean = new RequestBean();
             requestBean.setId("1");
+        }
+
+        public Builder net(String netUrl) {
+            this.netUrl = netUrl;
+            return this;
         }
 
         public Builder method(String method) {

@@ -8,17 +8,23 @@ import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,17 +34,22 @@ import org.trinity.util.HexUtil;
 import org.trinity.util.UIStringUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
+import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.logic.DevLogic;
 import org.trinity.wallet.logic.IDevCallback;
 import org.trinity.wallet.net.json.JSONRpcClient;
 import org.trinity.wallet.net.json.JSONRpcErrorUtil;
+import org.trinity.wallet.net.json.bean.ConstructTxBean;
 import org.trinity.wallet.net.json.bean.GetBalanceBean;
+import org.trinity.wallet.net.json.bean.SendrawtransactionBean;
+import org.trinity.wallet.net.json.bean.ValidateaddressBean;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import neoutils.Neoutils;
 import neoutils.Wallet;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -122,6 +133,8 @@ public class MainActivity extends BaseActivity {
         initCards();
         // Init events of tabs' click action.
         initTabs();
+        // Load the wallet via user password.TODO
+        load(null);
         // Init account data.
         postGetBalance();
 
@@ -134,10 +147,14 @@ public class MainActivity extends BaseActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == ConfigList.SIGN_IN_RESULT) {
             refreshCardUI();
-            Toast.makeText(getBaseContext(), "Connecting chain. Your balance will show in a few seconds.", Toast.LENGTH_LONG).show();
+            Toast.makeText(getBaseContext(), "Connecting chain.\nYour balance will show in a few seconds.", Toast.LENGTH_LONG).show();
             postGetBalance();
+            // Save the wallet via user password.TODO
+            save(null);
         } else if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
+            // Save the wallet via user password.TODO
+            save(null);
         }
     }
 
@@ -152,6 +169,7 @@ public class MainActivity extends BaseActivity {
                     return;
                 }
                 JSONRpcClient client = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrl())
                         .method("getBalance")
                         .params(wallet.getAddress())
                         .id("1")
@@ -161,7 +179,15 @@ public class MainActivity extends BaseActivity {
                             @Override
                             public void onFailure(Call call, IOException e) {
                                 e.printStackTrace();
-                                jsonRpcErrorOccur(true);
+                                // jsonRpcErrorOccur(true);
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                            }
+                                        }
+                                );
                             }
 
                             @Override
@@ -194,7 +220,6 @@ public class MainActivity extends BaseActivity {
     }
 
     private boolean jsonRpcErrorOccur(String body) {
-        // TODO Cover the try times method with interface.
         return jsonRpcErrorOccur(JSONRpcErrorUtil.hasError(body));
     }
 
@@ -208,7 +233,7 @@ public class MainActivity extends BaseActivity {
                             new Runnable() {
                                 @Override
                                 public void run() {
-                                    Toast.makeText(getBaseContext(), "Internal server exception occurred. Please try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                    Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
                                 }
                             }
                     );
@@ -251,14 +276,15 @@ public class MainActivity extends BaseActivity {
                                 Toast.makeText(getBaseContext(), title + ": Coming soon.", Toast.LENGTH_LONG).show();
                                 break;
                             case R.id.menuSwitchNet:
+                                // Do nothing here now(maybe not later).
                                 break;
                             case R.id.menuMainNet:
-                                wApp.switchNetUrl(ConfigList.MAIN_NET_URL);
+                                wApp.switchNet(ConfigList.NET_TYPE_MAIN);
                                 Toast.makeText(getBaseContext(), "Switched to: " + title, Toast.LENGTH_LONG).show();
                                 postGetBalance();
                                 break;
                             case R.id.menuTestNet:
-                                wApp.switchNetUrl(ConfigList.TEST_NET_URL);
+                                wApp.switchNet(ConfigList.NET_TYPE_TEST);
                                 Toast.makeText(getBaseContext(), "Switched to: " + title, Toast.LENGTH_LONG).show();
                                 postGetBalance();
                                 break;
@@ -280,7 +306,385 @@ public class MainActivity extends BaseActivity {
         cardContainer.setAdapter(pagerAdapter);
     }
 
+    private synchronized void attemptTransfer(final boolean isButtonCall) {
+        // Wallet
+        final Wallet wallet = wApp.getWallet();
+        final EditText toAddress = findViewById(R.id.inputTransferTo);
+        final TextInputLayout amount = findViewById(R.id.layAmount);
+        final EditText amountText = findViewById(R.id.inputAmount);
+        final TextView asset = findViewById(R.id.labelAssetsTrans);
+        final RadioGroup radioGroup = findViewById(R.id.inputAssetsTrans);
+        final Button btnTransfer = findViewById(R.id.btnTransferTo);
+
+        if (isButtonCall) {
+            runOnUiThread(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            // Toast please login first.
+                            Toast.makeText(getBaseContext(), "Verifying input.", Toast.LENGTH_LONG).show();
+                        }
+                    }
+            );
+
+            toAddress.setError(null);
+
+            if (wallet == null) {
+                runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                // Toast please login first.
+                                Toast.makeText(getBaseContext(), getString(R.string.please_login) + '.', Toast.LENGTH_LONG).show();
+                            }
+                        }
+                );
+                return;
+            }
+        }
+        final String toAddressStr = toAddress.getText().toString().trim();
+        if ("".equals(toAddressStr) || isButtonCall && wallet.getAddress().equals(toAddressStr)) {
+            if (isButtonCall) {
+                runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                // Invalid text error.
+                                toAddress.setError("Invalid input.");
+                                amount.setVisibility(View.GONE);
+                                asset.setVisibility(View.GONE);
+                                radioGroup.setVisibility(View.GONE);
+                            }
+                        }
+                );
+            }
+            return;
+        }
+        if (toAddress.length() != ConfigList.NEO_ADDRESS_LENGTH || !ConfigList.NEO_ADDRESS_FIRST.equals(toAddressStr.substring(0, 1))) {
+            if (isButtonCall) {
+                runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                // Invalid text error.
+                                toAddress.setError("Invalid input.");
+                                amount.setVisibility(View.GONE);
+                                asset.setVisibility(View.GONE);
+                                radioGroup.setVisibility(View.GONE);
+                            }
+                        }
+                );
+            }
+            return;
+        }
+        // Send post to verify to address.
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                JSONRpcClient client = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrlForNEO())
+                        .method("validateaddress")
+                        .params(toAddressStr)
+                        .id(toAddressStr)
+                        .build();
+                client.post(
+                        new Callback() {
+                            @Override
+                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                                e.printStackTrace();
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                            }
+                                        }
+                                );
+                            }
+
+                            @Override
+                            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                                final ValidateaddressBean responseBean;
+                                ResponseBody responseBody = response.body();
+                                if (responseBody != null) {
+                                    String body = responseBody.string();
+                                    responseBean = JSON.parseObject(body, ValidateaddressBean.class);
+                                    // The User input is a neo address.
+                                    if (responseBean.getResult().isIsvalid()) {
+                                        runOnUiThread(
+                                                new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        Toast.makeText(getBaseContext(), "Address verified.", Toast.LENGTH_LONG).show();
+                                                        // Show transfer window.
+                                                        if (amount.getVisibility() == View.GONE) {
+                                                            amount.setVisibility(View.VISIBLE);
+                                                            asset.setVisibility(View.VISIBLE);
+                                                            radioGroup.setVisibility(View.VISIBLE);
+                                                        } else if (isButtonCall) {
+                                                            final String amountTrim = amountText.getText().toString().trim();
+                                                            if ("".equals(amountTrim)) {
+                                                                Toast.makeText(getBaseContext(), "Please input amount.", Toast.LENGTH_LONG).show();
+                                                                return;
+                                                            }
+                                                            Toast.makeText(getBaseContext(), "Doing transfer. It takes a very short time.", Toast.LENGTH_LONG).show();
+                                                            btnTransfer.setClickable(false);
+                                                            int radioButtonId = radioGroup.getCheckedRadioButtonId();
+                                                            RadioButton radioChecked = MainActivity.this.findViewById(radioButtonId);
+                                                            String assetName = radioChecked.getText().toString().trim();
+                                                            postConstructTx(toAddressStr, amountTrim, assetName);
+                                                        }
+                                                    }
+                                                }
+                                        );
+                                    } else if (isButtonCall) {
+                                        // TODO Do something to know it is a gateway.
+                                        if (true) {
+                                            // TODO Gateway trade.
+                                            runOnUiThread(
+                                                    new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            amount.setVisibility(View.GONE);
+                                                            asset.setVisibility(View.GONE);
+                                                            radioGroup.setVisibility(View.GONE);
+                                                        }
+                                                    }
+                                            );
+                                        } else {
+                                            // All invalid.
+                                            runOnUiThread(
+                                                    new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            // Invalid text error.
+                                                            toAddress.setError("Invalid input.");
+                                                            amount.setVisibility(View.GONE);
+                                                            asset.setVisibility(View.GONE);
+                                                            radioGroup.setVisibility(View.GONE);
+                                                        }
+                                                    }
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                );
+            }
+        }, "MainActivity::isValidAddress").start();
+    }
+
+    private void postConstructTx(final String validToAddress, final String validAmount, final String assetName) {
+        // Send post to transfer to address.
+        final Wallet wallet = wApp.getWallet();
+        final Button btnTransfer = findViewById(R.id.btnTransferTo);
+        if (wallet == null) {
+            runOnUiThread(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            // Toast please login first.
+                            Toast.makeText(getBaseContext(), getString(R.string.please_login) + '.', Toast.LENGTH_LONG).show();
+                            btnTransfer.setClickable(true);
+                        }
+                    }
+            );
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String myAddress = wallet.getAddress();
+                JSONRpcClient client = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrl())
+                        .method("constructTx")
+                        .params(myAddress, validToAddress, validAmount, ConfigList.ASSET_ID_MAP.get(assetName))
+                        .id(validToAddress + validAmount + assetName)
+                        .build();
+                client.post(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        e.printStackTrace();
+                        runOnUiThread(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                        btnTransfer.setClickable(true);
+                                    }
+                                }
+                        );
+                    }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        ResponseBody body = response.body();
+                        if (body != null) {
+                            String respJson = body.string();
+                            boolean hasError = JSONRpcErrorUtil.hasError(respJson);
+                            if (hasError) {
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                // Toast please login first.
+                                                Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                                btnTransfer.setClickable(true);
+                                            }
+                                        }
+                                );
+                                return;
+                            }
+                            final ConstructTxBean bean = JSON.parseObject(respJson, ConstructTxBean.class);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    postSendrawtransaction(bean.getResult().getTxData(), bean.getResult().getTxid(), bean.getResult().getWitness());
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }, "MainActivity::postConstructTx").start();
+    }
+
+    private void postSendrawtransaction(final String txData, final String txid, final String witness) {
+        // Send post to transfer to address.
+        final Wallet wallet = wApp.getWallet();
+        final Button btnTransfer = findViewById(R.id.btnTransferTo);
+        if (wallet == null) {
+            runOnUiThread(
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            // Toast please login first.
+                            Toast.makeText(getBaseContext(), getString(R.string.please_login) + '.', Toast.LENGTH_LONG).show();
+                            btnTransfer.setClickable(true);
+                        }
+                    }
+            );
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                byte[] sign;
+                try {
+                    sign = Neoutils.sign(HexUtil.hexToByteArray(txData), HexUtil.byteArrayToHex(wallet.getPrivateKey()));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    runOnUiThread(
+                            new Runnable() {
+                                @Override
+                                public void run() {
+                                    // Toast please login first.
+                                    Toast.makeText(getBaseContext(), "Failed on signature.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                    btnTransfer.setClickable(true);
+                                }
+                            }
+                    );
+                    return;
+                }
+                String sign16 = HexUtil.byteArrayToHex(sign);
+                String publicKey16 = HexUtil.byteArrayToHex(wallet.getPublicKey());
+                String replacedWitness = witness.replace("{signature}", sign16).replace("{pubkey}", publicKey16);
+                JSONRpcClient client = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrlForNEO())
+                        .method("sendrawtransaction")
+                        .params(txData + replacedWitness)
+                        .id(txid)
+                        .build();
+                client.post(new Callback() {
+                    @Override
+                    public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                        e.printStackTrace();
+                        runOnUiThread(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                        btnTransfer.setClickable(true);
+                                    }
+                                }
+                        );
+                    }
+
+                    @Override
+                    public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                        ResponseBody body = response.body();
+                        if (body != null) {
+                            String respJson = body.string();
+                            boolean hasError = JSONRpcErrorUtil.hasError(respJson);
+                            if (hasError) {
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                                btnTransfer.setClickable(true);
+                                            }
+                                        }
+                                );
+                                return;
+                            }
+                            final SendrawtransactionBean bean = JSON.parseObject(respJson, SendrawtransactionBean.class);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (bean.isResult()) {
+                                        Toast.makeText(getBaseContext(), "Transfer succeed.", Toast.LENGTH_LONG).show();
+                                        postGetBalance();
+                                    } else {
+                                        Toast.makeText(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.", Toast.LENGTH_LONG).show();
+                                    }
+                                    btnTransfer.setClickable(true);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }, "MainActivity::postSendrawtransaction").start();
+    }
+
     private void initTabs() {
+        // This is tab transfer.
+        final EditText toAddress = findViewById(R.id.inputTransferTo);
+        final Button btnTransfer = findViewById(R.id.btnTransferTo);
+        toAddress.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                    attemptTransfer(true);
+                    return true;
+                }
+                return false;
+            }
+        });
+        toAddress.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                boolean focusOut = !b;
+                if (focusOut) {
+                    attemptTransfer(false);
+                }
+            }
+        });
+        btnTransfer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                attemptTransfer(true);
+            }
+        });
+
+        // This is tab add channel.
+
+        // This is tab channel list.
+
+        // This is tab record.
+
         tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
@@ -363,28 +767,25 @@ public class MainActivity extends BaseActivity {
 
         if (wallet == null) {
             cardAddress.setText(getString(R.string.please_login));
-            return;
+        } else if (wallet.getAddress() != null) {
+            cardAddress.setText(wallet.getAddress());
         }
 
-        if (wallet.getPrivateKey() != null && wallet.getAddress() != null) {
-            cardAddress.setText(wallet.getAddress());
-
-            String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
-            if (split.length > 0) {
-                switch (split[split.length - 1]) {
-                    case "TNC":
-                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
-                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
-                        break;
-                    case "NEO":
-                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
-                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
-                        break;
-                    case "GAS":
-                        chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
-                        channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
-                        break;
-                }
+        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+        if (split.length > 0) {
+            switch (split[split.length - 1]) {
+                case "TNC":
+                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
+                    break;
+                case "NEO":
+                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
+                    break;
+                case "GAS":
+                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
+                    break;
             }
         }
     }

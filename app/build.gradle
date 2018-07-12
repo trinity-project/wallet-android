@@ -36,4 +36,5 @@ dependencies {
     implementation 'pub.devrel:easypermissions:0.4.3'
     implementation 'com.alibaba:fastjson:1.2.47'
     implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+    implementation 'com.scottyab:secure-preferences-lib:0.1.4'
 }

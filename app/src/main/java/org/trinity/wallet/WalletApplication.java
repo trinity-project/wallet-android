@@ -15,6 +15,7 @@ public final class WalletApplication extends Application {
      * The net url of neo.
      */
     private static String netUrl;
+    private static String netUrlForNEO;
     private static WalletApplication instance;
     /**
      * This is the NEO wallet model.
@@ -41,15 +42,37 @@ public final class WalletApplication extends Application {
         WalletApplication.instance = instance;
     }
 
+    public static String getNetUrlForNEO() {
+        return netUrlForNEO;
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         instance = this;
-        switchNetUrl(ConfigList.MAIN_NET_URL);
+        switchNet(ConfigList.NET_TYPE_MAIN);
     }
 
-    public void switchNetUrl(String netUrl) {
-        WalletApplication.netUrl = netUrl;
+    public void clearBalance() {
+        chainTNC = null;
+        channelTNC = null;
+        chainNEO = null;
+        channelNEO = null;
+        chainGAS = null;
+        channelGAS = null;
+    }
+
+    public void switchNet(String netType) {
+        if (ConfigList.NET_TYPE_MAIN.equals(netType)) {
+            netUrl = ConfigList.MAIN_NET_URL;
+            netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
+            ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
+        }
+        if (ConfigList.NET_TYPE_TEST.equals(netType)) {
+            netUrl = ConfigList.TEST_NET_URL;
+            netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
+            ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
+        }
     }
 
     public Wallet getWallet() {

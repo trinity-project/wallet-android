@@ -10,6 +10,7 @@
     android:orientation="vertical">
 
     <TextView
+        android:id="@+id/titleUserVerify"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/activity_vertical_margin"
@@ -19,6 +20,17 @@
         android:focusable="true"
         android:text="IDENTITY VERIFICATION"
         android:textSize="28sp" />
+
+    <TextView
+        android:id="@+id/infoUserVerify"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:text="Please input your password for identity verify. (It is NOT your private key.)"
+        android:textAlignment="viewStart"
+        android:textSize="12sp" />
 
     <android.support.design.widget.TextInputLayout
         android:id="@+id/layUserVerify"
@@ -59,15 +71,16 @@
 
     <Button
         android:id="@+id/btnUserVerify"
-        android:layout_width="wrap_content"
+        style="?android:textAppearanceSmall"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/activity_vertical_margin"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="8dp"
-        android:ems="8"
         android:focusable="true"
-        android:text="@string/verify" />
+        android:text="@string/verify"
+        android:textStyle="bold" />
 
     <Space
         android:layout_width="match_parent"

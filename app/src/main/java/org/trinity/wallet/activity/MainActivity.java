@@ -46,6 +46,7 @@ import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -72,6 +73,11 @@ public class MainActivity extends BaseActivity {
      */
     @BindView(R.id.btnMainMenu)
     public Button mainMenu;
+    /**
+     * The net state text.
+     */
+    @BindView(R.id.netState)
+    public TextView netState;
     /**
      * The frame of a single card view.
      */
@@ -142,14 +148,24 @@ public class MainActivity extends BaseActivity {
         initUserIdentityVerify(wApp.isFirstTime());
     }
 
-
     private void initUserIdentityVerify(boolean isFirstTime) {
+        findViewById(R.id.toolbar).setVisibility(View.GONE);
+        findViewById(R.id.cardsShell).setVisibility(View.GONE);
+        findViewById(R.id.tabsContainer).setVisibility(View.GONE);
+        tab.setVisibility(View.GONE);
+        wApp.setIsIdentity(false);
+        findViewById(R.id.userVerify).setVisibility(View.VISIBLE);
+
         final EditText inputUserVerify = findViewById(R.id.inputUserVerify);
         final TextInputLayout layUserVerifySure = findViewById(R.id.layUserVerifySure);
         final EditText inputUserVerifySure = findViewById(R.id.inputUserVerifySure);
+        final TextView titleUserVerify = findViewById(R.id.titleUserVerify);
+        final TextView infoUserVerify = findViewById(R.id.infoUserVerify);
 
-        wApp.setIsIdentity(false);
+        titleUserVerify.requestFocus();
         if (isFirstTime) {
+            titleUserVerify.setText("IDENTITY CONFIRM");
+            infoUserVerify.setText("Please set a new password for identity verify. (It is NOT your private key.)");
             layUserVerifySure.setVisibility(View.VISIBLE);
             btnUserVerify.setText(R.string.confirm);
             btnUserVerify.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -169,6 +185,8 @@ public class MainActivity extends BaseActivity {
                 }
             });
         } else {
+            titleUserVerify.setText("IDENTITY VERIFICATION");
+            infoUserVerify.setText("Please input your password for identity verify. (It is NOT your private key.)");
             layUserVerifySure.setVisibility(View.GONE);
             btnUserVerify.setText(R.string.verify);
             btnUserVerify.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -208,7 +226,7 @@ public class MainActivity extends BaseActivity {
         }
         if (!password.equals(passwordSure)) {
             inputUserVerifySure.setError("Inconsistent.");
-            inputUserVerify.requestFocus();
+            inputUserVerifySure.requestFocus();
             btnUserVerify.setClickable(true);
             return;
         }
@@ -216,6 +234,10 @@ public class MainActivity extends BaseActivity {
         wApp.iAmNotFirstTime(password);
         wApp.setPasswordOnRAM(password);
         initUserIdentityVerify(false);
+
+        inputUserVerify.setText(null);
+        inputUserVerifySure.setText(null);
+        ToastUtil.show(getBaseContext(), "New password effective immediately.");
 
         endIdentityVerify();
     }
@@ -242,6 +264,9 @@ public class MainActivity extends BaseActivity {
 
         wApp.setPasswordOnRAM(password);
 
+        inputUserVerify.setText(null);
+        ToastUtil.show(getBaseContext(), "Identity verified.\nSwitched to main net.");
+
         endIdentityVerify();
     }
 
@@ -256,15 +281,13 @@ public class MainActivity extends BaseActivity {
         tab.setVisibility(View.VISIBLE);
         wApp.setIsIdentity(true);
 
-        View userVerify = findViewById(R.id.userVerify);
-        userVerify.setVisibility(View.GONE);
+        findViewById(R.id.userVerify).setVisibility(View.GONE);
         btnUserVerify.setClickable(true);
 
         // Load the wallet via user password.
         wApp.load();
         // Init account data.
         postGetBalance();
-        ToastUtil.show(getBaseContext(), "Net state reset.\nSwitched to main net.");
     }
 
     @Override
@@ -272,15 +295,23 @@ public class MainActivity extends BaseActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == ConfigList.SIGN_IN_RESULT) {
             refreshCardUI();
-            ToastUtil.show(getBaseContext(), "Connecting chain.\nYour balance will show in a few seconds.");
+            ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
             postGetBalance();
             // Save the wallet via user password.
             wApp.save();
-        } else if (resultCode == ConfigList.SIGN_OUT_RESULT) {
+            return;
+        }
+        if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
             // Save the wallet via user password.
             wApp.save();
+            return;
         }
+        if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
+            initUserIdentityVerify(true);
+            return;
+        }
+        postGetBalance();
     }
 
     private synchronized void postGetBalance() {
@@ -379,6 +410,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initToolbarMenu() {
+        netState.setText(getString(R.string.main_menu_main_net).toUpperCase(Locale.getDefault()));
         mainMenu.setOnClickListener(new View.OnClickListener() {
             private PopupMenu popupMenu;
 
@@ -389,7 +421,7 @@ public class MainActivity extends BaseActivity {
                 popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        CharSequence title = item.getTitle();
+                        CharSequence itemTitle = item.getTitle();
                         int itemId = item.getItemId();
                         switch (itemId) {
                             case R.id.menuAccount:
@@ -398,19 +430,21 @@ public class MainActivity extends BaseActivity {
                                 break;
                             case R.id.menuScan:
                                 // TODO CAMERA SCAN
-                                ToastUtil.show(getBaseContext(), title + ": Coming soon.");
+                                ToastUtil.show(getBaseContext(), itemTitle + ": Coming soon.");
                                 break;
                             case R.id.menuSwitchNet:
                                 // Do nothing here now(maybe not later).
                                 break;
                             case R.id.menuMainNet:
                                 wApp.switchNet(ConfigList.NET_TYPE_MAIN);
-                                ToastUtil.show(getBaseContext(), "Switched to: " + title);
+                                ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
+                                netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
                                 break;
                             case R.id.menuTestNet:
                                 wApp.switchNet(ConfigList.NET_TYPE_TEST);
-                                ToastUtil.show(getBaseContext(), "Switched to: " + title);
+                                ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
+                                netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
                                 break;
                         }

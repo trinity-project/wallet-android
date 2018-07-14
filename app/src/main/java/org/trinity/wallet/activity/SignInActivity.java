@@ -25,11 +25,15 @@ import neoutils.Wallet;
  * A login screen that offers login via private key.
  */
 public class SignInActivity extends BaseActivity {
-    // UI references.
+    /**
+     * UI references.
+     */
     @BindView(R.id.signInPrivateKey)
     public EditText mPrivateKeyView;
 
-    // Wallet.
+    /**
+     * Wallet.
+     */
     private Wallet wallet;
 
     @Override
@@ -87,6 +91,18 @@ public class SignInActivity extends BaseActivity {
                                 // Do nothing here.
                             }
                         }).show();
+            }
+        });
+
+        // Initialize the logout button event.
+        Button btnChangePassword = findViewById(R.id.btnChangePassword);
+        btnChangePassword.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // Set the result.
+                setResult(ConfigList.CHANGE_PASSWORD_RESULT);
+                // Go back to the main activity.
+                signFinish();
             }
         });
 

@@ -1,6 +1,9 @@
 package org.trinity.wallet;
 
 import android.app.Application;
+import android.content.SharedPreferences;
+
+import com.securepreferences.SecurePreferences;
 
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.RecordBean;
@@ -8,6 +11,7 @@ import org.trinity.wallet.entity.RecordBean;
 import java.math.BigDecimal;
 import java.util.List;
 
+import neoutils.Neoutils;
 import neoutils.Wallet;
 
 public final class WalletApplication extends Application {
@@ -17,6 +21,7 @@ public final class WalletApplication extends Application {
     private static String netUrl;
     private static String netUrlForNEO;
     private static WalletApplication instance;
+    private final String FIRST_TIME_USE = "FIRST_TIME_USE";
     /**
      * This is the NEO wallet model.
      */
@@ -29,6 +34,9 @@ public final class WalletApplication extends Application {
     private BigDecimal channelGAS;
     private List<ChannelBean> channelList;
     private List<RecordBean> recordList;
+    private boolean isIdentity;
+    private String passwordOnRAM;
+    private SharedPreferences userIdentityVerifyPrefs;
 
     public static String getNetUrl() {
         return netUrl;
@@ -38,12 +46,66 @@ public final class WalletApplication extends Application {
         return instance;
     }
 
-    public static void setInstance(WalletApplication instance) {
-        WalletApplication.instance = instance;
-    }
-
     public static String getNetUrlForNEO() {
         return netUrlForNEO;
+    }
+
+    public boolean isFirstTime() {
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), FIRST_TIME_USE, "first_time_use.xml");
+        String firstTimeUseString = first_time_use.getString(FIRST_TIME_USE, null);
+        return firstTimeUseString == null || !FIRST_TIME_USE.equals(firstTimeUseString);
+    }
+
+    public void iAmNotFirstTime(String password) {
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), FIRST_TIME_USE, "first_time_use.xml");
+        SharedPreferences.Editor editor = first_time_use.edit();
+        editor.clear();
+        editor.putString(FIRST_TIME_USE, FIRST_TIME_USE);
+        editor.apply();
+        userIdentityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
+        SharedPreferences.Editor editorUserIdentityVerify = userIdentityVerifyPrefs.edit();
+        editorUserIdentityVerify.remove(ConfigList.USER_PASSWORD_KEY);
+        editorUserIdentityVerify.putString(ConfigList.USER_PASSWORD_KEY, password);
+        editorUserIdentityVerify.apply();
+    }
+
+    public boolean isKeyFileOpen(String password) {
+        userIdentityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
+        String passwordInShare = userIdentityVerifyPrefs.getString(ConfigList.USER_PASSWORD_KEY, null);
+        if (passwordInShare != null && password.equals(passwordInShare)) {
+            return true;
+        } else {
+            userIdentityVerifyPrefs = null;
+            return false;
+        }
+    }
+
+    public void save() {
+        SharedPreferences.Editor editor = userIdentityVerifyPrefs.edit();
+        editor.remove(ConfigList.SAVE_KEY);
+        boolean isValidWIF = wallet != null && wallet.getWIF() != null && !"".equals(wallet.getWIF()) && wallet.getAddress() != null && !"".equals(wallet.getAddress());
+        if (isValidWIF) {
+            editor.putString(ConfigList.SAVE_KEY, wallet.getWIF());
+        }
+        editor.apply();
+    }
+
+    public void load() {
+        String secureWIF = userIdentityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
+        if (secureWIF == null || "".equals(secureWIF)) {
+            return;
+        }
+        Wallet wifGenWallet;
+        try {
+            wifGenWallet = Neoutils.generateFromWIF(secureWIF);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        if (wifGenWallet == null || wifGenWallet.getAddress() == null || "".equals(wifGenWallet.getAddress())) {
+            return;
+        }
+        wallet = wifGenWallet;
     }
 
     @Override
@@ -145,6 +207,26 @@ public final class WalletApplication extends Application {
 
     public void setRecordList(List<RecordBean> recordList) {
         this.recordList = recordList;
+    }
+
+    public void setIsIdentity(boolean isIdentity) {
+        this.isIdentity = isIdentity;
+    }
+
+    public boolean isIdentity() {
+        return isIdentity;
+    }
+
+    public void setIdentity(boolean isIdentity) {
+        this.isIdentity = isIdentity;
+    }
+
+    public String getPasswordOnRAM() {
+        return passwordOnRAM;
+    }
+
+    public void setPasswordOnRAM(String passwordOnRAM) {
+        this.passwordOnRAM = passwordOnRAM;
     }
 }
 

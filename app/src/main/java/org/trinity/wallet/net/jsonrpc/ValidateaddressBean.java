@@ -1,27 +1,7 @@
-package org.trinity.wallet.net.json.bean;
+package org.trinity.wallet.net.jsonrpc;
 
-public class ValidateaddressBean {
-    private String jsonrpc;
-
-    private String id;
-
+public class ValidateaddressBean extends BaseJSONRpcBean {
     private Result result;
-
-    public String getJsonrpc() {
-        return this.jsonrpc;
-    }
-
-    public void setJsonrpc(String jsonrpc) {
-        this.jsonrpc = jsonrpc;
-    }
-
-    public String getId() {
-        return this.id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public Result getResult() {
         return this.result;

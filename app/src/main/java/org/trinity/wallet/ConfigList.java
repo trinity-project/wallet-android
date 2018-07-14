@@ -20,6 +20,11 @@ public final class ConfigList {
     public static final String NEO_ADDRESS_FIRST = "A";
     public static final String NET_TYPE_MAIN = "MAIN";
     public static final String NET_TYPE_TEST = "TEST";
+    public static final String SAVE_KEY = "WIF";
+    public static final String USER_PASSWORD_KEY = "PASSWORD";
+    public static final int USER_PASSWORD_MIN = 8;
+    public static final int USER_PASSWORD_MAX = 16;
+
     public static final Map<String, String> ASSET_ID_MAP = new HashMap<>();
     public static final String ASSET_ID_MAP_KEY_TNC = "TNC";
     public static final String ASSET_ID_MAP_KEY_NEO = "NEO";
@@ -28,6 +33,7 @@ public final class ConfigList {
     public static final String ASSET_ID_TNC_TEST = "0x849d095d07950b9e56d0c895ec48ec5100cfdff1";
     public static final String ASSET_ID_NEO = "0xc56f33fc6ecfcd0c225c4ab356fee59390af8560be0e930faebe74a6daff7c9b";
     public static final String ASSET_ID_GAS = "0x602c79718b16e442de58778e148d0b1084e3b2dffd5de6b7b16cee7969282de7";
+    public static final int COIN_DIGITS = 8;
 
     static {
         ASSET_ID_MAP.put(ASSET_ID_MAP_KEY_TNC, ASSET_ID_TNC_MAIN);

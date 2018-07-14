@@ -16,9 +16,4 @@
         android:id="@+id/navigationRecord"
         android:icon="@drawable/ic_record_black_24dp"
         android:title="@string/tab_record" />
-    <item
-        android:id="@+id/navigationDev"
-        android:icon="@drawable/ic_dev_black_24dp"
-        android:title="@string/tab_dev"
-        android:visible="true" />
 </menu>

@@ -1,27 +1,7 @@
-package org.trinity.wallet.net.json.bean;
+package org.trinity.wallet.net.jsonrpc;
 
-import java.math.BigDecimal;
-
-public class GetBalanceBean {
-    private String id;
-    private String jsonrpc;
+public class GetBalanceBean extends BaseJSONRpcBean {
     private ResultBean result;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getJsonrpc() {
-        return jsonrpc;
-    }
-
-    public void setJsonrpc(String jsonrpc) {
-        this.jsonrpc = jsonrpc;
-    }
 
     public ResultBean getResult() {
         return result;

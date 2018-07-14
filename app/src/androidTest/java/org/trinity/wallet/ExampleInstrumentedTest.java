@@ -45,7 +45,7 @@ public class ExampleInstrumentedTest {
                     "|------------------------------------Made------------------------------------~" + "\n" +
                     "| priKey: " + HexUtil.byteArrayToHex(privateKey) + "\n" +
                     "| pubKey: " + HexUtil.byteArrayToHex(publicKey) + "\n" +
-                    "| hashSn : " + HexUtil.byteArrayToHex(hashedSignature) + "\n" +
+                    "| hashSn: " + HexUtil.byteArrayToHex(hashedSignature) + "\n" +
                     "| WIF   : " + wif + "\n" +
                     "| add   : " + address + "\n" +
                     "| Sign  : " + sign + "\n" +

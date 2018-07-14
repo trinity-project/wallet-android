@@ -44,4 +44,8 @@
     <string name="btn_sign_out">SIGN OUT</string>
     <string name="private_key">Private Key</string>
     <string name="amount">Amount</string>
+    <string name="passwordOnRAM">Password (8 ~ 16 bits, half width)</string>
+    <string name="verify">Verify</string>
+    <string name="password_again">Password again</string>
+    <string name="confirm">Confirm</string>
 </resources>

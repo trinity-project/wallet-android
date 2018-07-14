@@ -11,10 +11,7 @@ public final class ToastUtil {
     private static int textView_id;
 
     public static void show(Context context, String str) {
-        if (toast == null)
-            toast = Toast.makeText(context.getApplicationContext(), str, Toast.LENGTH_SHORT);
-        else
-            toast.setText(str);
+        toast = Toast.makeText(context.getApplicationContext(), str, Toast.LENGTH_SHORT);
         if (textView_id == 0)
             textView_id = Resources.getSystem().getIdentifier("message", "id", "android");
         ((TextView) toast.getView().findViewById(textView_id)).setGravity(Gravity.CENTER);
@@ -22,10 +19,7 @@ public final class ToastUtil {
     }
 
     public static void show(Context context, int resId) {
-        if (toast == null)
-            toast = Toast.makeText(context.getApplicationContext(), resId, Toast.LENGTH_SHORT);
-        else
-            toast.setText(resId);
+        toast = Toast.makeText(context.getApplicationContext(), resId, Toast.LENGTH_SHORT);
         if (textView_id == 0)
             textView_id = Resources.getSystem().getIdentifier("message", "id", "android");
         ((TextView) toast.getView().findViewById(textView_id)).setGravity(Gravity.CENTER);

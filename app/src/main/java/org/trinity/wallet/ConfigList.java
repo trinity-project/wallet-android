@@ -12,6 +12,7 @@ public final class ConfigList {
     public static final int SIGN_IN_RESULT = 1;
     public static final int SIGN_OUT_RESULT = 2;
     public static final int CHANGE_PASSWORD_RESULT = 3;
+    public static final int SCAN_RESULT = 4;
     public static final int READ_TIME_OUT = 20;
     public static final int WRITE_TIME_OUT = 20;
     public static final int CONNECT_TIME_OUT = 20;
@@ -25,6 +26,8 @@ public final class ConfigList {
     public static final String USER_PASSWORD_KEY = "PASSWORD";
     public static final int USER_PASSWORD_MIN = 8;
     public static final int USER_PASSWORD_MAX = 16;
+    public static final int QR_CODE_WIDTH = 200;
+    public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
 
     public static final Map<String, String> ASSET_ID_MAP = new HashMap<>();
     public static final String ASSET_ID_MAP_KEY_TNC = "TNC";

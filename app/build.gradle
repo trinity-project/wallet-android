@@ -20,6 +20,7 @@ android {
 repositories {
     flatDir { dirs 'libs' }
     google()
+    jcenter()
 }
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
@@ -34,7 +35,9 @@ dependencies {
     implementation 'com.jakewharton:butterknife:8.8.1'
     annotationProcessor 'com.jakewharton:butterknife-compiler:8.8.1'
     implementation 'pub.devrel:easypermissions:0.4.3'
-    implementation 'com.alibaba:fastjson:1.2.47'
-    implementation 'com.squareup.okhttp3:okhttp:3.10.0'
     implementation 'com.scottyab:secure-preferences-lib:0.1.4'
+    implementation 'com.squareup.okhttp3:okhttp:3.10.0'
+    implementation 'com.alibaba:fastjson:1.2.47'
+    implementation 'com.google.zxing:core:3.3.0'
+    implementation 'com.journeyapps:zxing-android-embedded:3.3.0'
 }

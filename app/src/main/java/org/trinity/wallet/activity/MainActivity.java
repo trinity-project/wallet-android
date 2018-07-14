@@ -1,5 +1,6 @@
 package org.trinity.wallet.activity;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
@@ -30,10 +31,13 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 
 import com.alibaba.fastjson.JSON;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 import org.trinity.util.HexUtil;
-import org.trinity.util.UIStringUtil;
+import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.android.ToastUtil;
+import org.trinity.util.android.UIStringUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
@@ -56,6 +60,7 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import pub.devrel.easypermissions.EasyPermissions;
 
 public class MainActivity extends BaseActivity {
     /**
@@ -311,6 +316,20 @@ public class MainActivity extends BaseActivity {
             initUserIdentityVerify(true);
             return;
         }
+//        if (resultCode == ConfigList.SCAN_RESULT) {
+        IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (intentResult != null) {
+            if (intentResult.getContents() == null) {
+                ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
+            } else {
+                ToastUtil.show(getBaseContext(), "QR code scanned, analyzing content.");
+                String scanResult = intentResult.getContents();
+                // TODO handle scan result.
+                ToastUtil.show(getBaseContext(), scanResult);
+            }
+        }
+//            return;
+//        }
         postGetBalance();
     }
 
@@ -429,8 +448,13 @@ public class MainActivity extends BaseActivity {
                                 startActivityForResult(intent, 0);
                                 break;
                             case R.id.menuScan:
-                                // TODO CAMERA SCAN
-                                ToastUtil.show(getBaseContext(), itemTitle + ": Coming soon.");
+                                // Request camera permission.
+                                EasyPermissions.requestPermissions(
+                                        MainActivity.this,
+                                        "Camera access permission is required for QR code scanning.",
+                                        1,
+                                        Manifest.permission.CAMERA);
+                                QRCodeUtil.cameraScan(MainActivity.this);
                                 break;
                             case R.id.menuSwitchNet:
                                 // Do nothing here now(maybe not later).

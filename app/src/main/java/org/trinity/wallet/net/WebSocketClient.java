@@ -1,26 +1,29 @@
 package org.trinity.wallet.net;
 
-import com.alibaba.fastjson.JSON;
-
-import org.trinity.wallet.ConfigList;
-import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.jsonrpc.RequestJSONRpcBean;
 
 import java.util.Arrays;
 
-import okhttp3.MediaType;
+import okhttp3.Request;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
 
 public class WebSocketClient extends AbstractClient {
-    private static final MediaType MEDIA_TYPE = MediaType.parse(ConfigList.CLIENT_MEDIA_TYPE);
-    private String url;
-    private String json;
+    private WebSocket stepsWebSocket;
+    private Request request;
 
     WebSocketClient(WebSocketClient.Builder builder) {
-        this.url = builder.netUrl;
-        this.json = JSON.toJSONString(builder.requestJSONRpcBean);
-        if (url == null || "".equals(url.trim())) {
-            url = WalletApplication.getNetUrl();
-        }
+        request = new Request.Builder()
+                .url(builder.netUrl)
+                .build();
+    }
+
+    public void connect(WebSocketListener listener) {
+        stepsWebSocket = client.newWebSocket(request, listener);
+    }
+
+    public void finish() {
+        stepsWebSocket.cancel();
     }
 
     public static final class Builder {

@@ -14,6 +14,8 @@ import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -25,16 +27,20 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toolbar;
 
 import com.alibaba.fastjson.JSON;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import org.trinity.util.HexUtil;
+import org.trinity.util.JSONRpcErrorUtil;
 import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.android.ToastUtil;
 import org.trinity.util.android.UIStringUtil;
@@ -42,7 +48,6 @@ import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.JSONRpcClient;
-import org.trinity.wallet.net.JSONRpcErrorUtil;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
 import org.trinity.wallet.net.jsonrpc.GetBalanceBean;
 import org.trinity.wallet.net.jsonrpc.SendrawtransactionBean;
@@ -69,63 +74,135 @@ public class MainActivity extends BaseActivity {
     @SuppressLint("StaticFieldLeak")
     public static MainActivity instance;
     /**
-     * The user verify button.
-     */
-    @BindView(R.id.btnUserVerify)
-    public Button btnUserVerify;
-    /**
-     * The menu button.
-     */
-    @BindView(R.id.btnMainMenu)
-    public Button mainMenu;
-    /**
-     * The net state text.
-     */
-    @BindView(R.id.netState)
-    public TextView netState;
-    /**
      * The frame of a single card view.
      */
     @BindView(R.id.cardsShell)
-    public CoordinatorLayout cardsShell;
-    /**
-     * The total number of cards.
-     */
-    public int cardAccount = ConfigList.COIN_TYPE_ACCOUNT;
+    CoordinatorLayout cardsShell;
     /**
      * The container of a single card.
      * <p>
      * The {@link ViewPager} that will host the section contents.
      */
     @BindView(R.id.cardContainer)
-    public ViewPager cardContainer;
+    ViewPager cardContainer;
     /**
      * The adapter of the card group.
      * <p>
-     * The {@link android.support.v4.view.PagerAdapter} that will provide
+     * The {@link PagerAdapter} that will provide
      * fragments for each of the sections. We use a
      * {@link FragmentPagerAdapter} derivative, which will keep every
      * loaded fragment in memory. If this becomes too memory intensive, it
      * may be best to switch to a
-     * {@link android.support.v4.app.FragmentStatePagerAdapter}.
+     * {@link FragmentStatePagerAdapter}.
      */
-    public SectionsPagerAdapter pagerAdapter;
+    SectionsPagerAdapter pagerAdapter;
     /**
      * The navigation bar of main tab.
      */
     @BindView(R.id.tab)
-    public BottomNavigationView tab;
+    BottomNavigationView tab;
     /**
      * The bodies of main tab.
      */
     @BindView(R.id.tabTransfer)
-    public ConstraintLayout tabTransfer;
+    ConstraintLayout tabTransfer;
     @BindView(R.id.tabAddChannel)
-    public ConstraintLayout tabAddChannel;
+    ConstraintLayout tabAddChannel;
     @BindView(R.id.tabChannelList)
-    public ConstraintLayout tabChannelList;
+    ConstraintLayout tabChannelList;
     @BindView(R.id.tabRecord)
-    public ConstraintLayout tabRecord;
+    ConstraintLayout tabRecord;
+    /**
+     * The butter knife inject components.
+     */
+    @BindView(R.id.netState)
+    TextView netState;
+    @BindView(R.id.btnMainMenu)
+    Button btnMainMenu;
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+    @BindView(R.id.titleTransfer)
+    TextView titleTransfer;
+    @BindView(R.id.inputTransferTo)
+    EditText inputTransferTo;
+    @BindView(R.id.layTransferTo)
+    TextInputLayout layTransferTo;
+    @BindView(R.id.inputAmount)
+    EditText inputAmount;
+    @BindView(R.id.layAmount)
+    TextInputLayout layAmount;
+    @BindView(R.id.labelAssetsTrans)
+    TextView labelAssetsTrans;
+    @BindView(R.id.rdoItmTNCTrans)
+    RadioButton rdoItmTNCTrans;
+    @BindView(R.id.rdoItmNEOTrans)
+    RadioButton rdoItmNEOTrans;
+    @BindView(R.id.rdoItmGASTrans)
+    RadioButton rdoItmGASTrans;
+    @BindView(R.id.inputAssetsTrans)
+    RadioGroup inputAssetsTrans;
+    @BindView(R.id.btnTransferTo)
+    Button btnTransferTo;
+    @BindView(R.id.titleAddChannel)
+    TextView titleAddChannel;
+    @BindView(R.id.inputTNAP)
+    EditText inputTNAP;
+    @BindView(R.id.layTNAP)
+    TextInputLayout layTNAP;
+    @BindView(R.id.inputDeposit)
+    EditText inputDeposit;
+    @BindView(R.id.layDeposit)
+    TextInputLayout layDeposit;
+    @BindView(R.id.labelAssets)
+    TextView labelAssets;
+    @BindView(R.id.rdoItmTNC)
+    RadioButton rdoItmTNC;
+    @BindView(R.id.rdoItmNEO)
+    RadioButton rdoItmNEO;
+    @BindView(R.id.rdoItmGAS)
+    RadioButton rdoItmGAS;
+    @BindView(R.id.inputAssets)
+    RadioGroup inputAssets;
+    @BindView(R.id.inputAlias)
+    EditText inputAlias;
+    @BindView(R.id.layAlias)
+    TextInputLayout layAlias;
+    @BindView(R.id.titleChannelList)
+    TextView titleChannelList;
+    @BindView(R.id.channelListEmpty)
+    TextView channelListEmpty;
+    @BindView(R.id.channelContainer)
+    LinearLayout channelContainer;
+    @BindView(R.id.titleRecord)
+    TextView titleRecord;
+    @BindView(R.id.recordEmpty)
+    TextView recordEmpty;
+    @BindView(R.id.recordContainer)
+    LinearLayout recordContainer;
+    @BindView(R.id.tabsContainer)
+    ScrollView tabsContainer;
+    @BindView(R.id.titleUserVerify)
+    TextView titleUserVerify;
+    @BindView(R.id.infoUserVerify)
+    TextView infoUserVerify;
+    @BindView(R.id.inputUserVerify)
+    EditText inputUserVerify;
+    @BindView(R.id.layUserVerify)
+    TextInputLayout layUserVerify;
+    @BindView(R.id.inputUserVerifySure)
+    EditText inputUserVerifySure;
+    @BindView(R.id.layUserVerifySure)
+    TextInputLayout layUserVerifySure;
+    @BindView(R.id.btnUserVerify)
+    Button btnUserVerify;
+    @BindView(R.id.userVerify)
+    LinearLayout userVerify;
+    @BindView(R.id.mainContainer)
+    ConstraintLayout mainContainer;
+    /**
+     * The total number of cards.
+     */
+    private int cardAccount = ConfigList.COIN_TYPE_ACCOUNT;
     /**
      * The lock for post requests witch gets balance.
      */
@@ -154,18 +231,12 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initUserIdentityVerify(boolean isFirstTime) {
-        findViewById(R.id.toolbar).setVisibility(View.GONE);
-        findViewById(R.id.cardsShell).setVisibility(View.GONE);
-        findViewById(R.id.tabsContainer).setVisibility(View.GONE);
+        toolbar.setVisibility(View.GONE);
+        cardsShell.setVisibility(View.GONE);
+        tabsContainer.setVisibility(View.GONE);
         tab.setVisibility(View.GONE);
         wApp.setIsIdentity(false);
-        findViewById(R.id.userVerify).setVisibility(View.VISIBLE);
-
-        final EditText inputUserVerify = findViewById(R.id.inputUserVerify);
-        final TextInputLayout layUserVerifySure = findViewById(R.id.layUserVerifySure);
-        final EditText inputUserVerifySure = findViewById(R.id.inputUserVerifySure);
-        final TextView titleUserVerify = findViewById(R.id.titleUserVerify);
-        final TextView infoUserVerify = findViewById(R.id.infoUserVerify);
+        userVerify.setVisibility(View.VISIBLE);
 
         titleUserVerify.requestFocus();
         if (isFirstTime) {
@@ -213,12 +284,13 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private void userIdentitySet(EditText inputUserVerify, EditText inputUserVerifySure) {
+    private void userIdentitySet(final EditText inputUserVerify, final EditText inputUserVerifySure) {
         btnUserVerify.setClickable(false);
+        verifyIdentityHideIME();
 
         inputUserVerify.setError(null);
         inputUserVerifySure.setError(null);
-        String password = inputUserVerify.getText().toString();
+        final String password = inputUserVerify.getText().toString();
         String passwordSure = inputUserVerifySure.getText().toString();
         int inLen = password.length();
 
@@ -235,21 +307,33 @@ public class MainActivity extends BaseActivity {
             btnUserVerify.setClickable(true);
             return;
         }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                wApp.iAmNotFirstTime(password);
 
-        wApp.iAmNotFirstTime(password);
-        wApp.setPasswordOnRAM(password);
-        initUserIdentityVerify(false);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        wApp.setPasswordOnRAM(password);
+                        initUserIdentityVerify(false);
 
-        inputUserVerify.setText(null);
-        inputUserVerifySure.setText(null);
-        ToastUtil.show(getBaseContext(), "New password effective immediately.");
+                        inputUserVerify.setText(null);
+                        inputUserVerifySure.setText(null);
+                        ToastUtil.show(getBaseContext(), "New password effective immediately.");
 
-        endIdentityVerify();
+                        endIdentityVerify();
+                    }
+                });
+            }
+        }, "MainActivity::userIdentityVerify").start();
     }
 
-    private void userIdentityVerify(EditText inputUserVerify) {
+    private void userIdentityVerify(final EditText inputUserVerify) {
+        ToastUtil.show(getBaseContext(), "Verifying.");
+        verifyIdentityHideIME();
         inputUserVerify.setError(null);
-        String password = inputUserVerify.getText().toString();
+        final String password = inputUserVerify.getText().toString();
         int inLen = password.length();
         if (ConfigList.USER_PASSWORD_MIN > inLen || inLen > ConfigList.USER_PASSWORD_MAX) {
             wApp.setIsIdentity(false);
@@ -258,35 +342,48 @@ public class MainActivity extends BaseActivity {
             btnUserVerify.setClickable(true);
             return;
         }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final boolean isKeyFileOpen = wApp.isKeyFileOpen(password);
 
-        if (!wApp.isKeyFileOpen(password)) {
-            wApp.setIsIdentity(false);
-            inputUserVerify.setError("Verification failure. Please make sure and try again.");
-            inputUserVerify.requestFocus();
-            btnUserVerify.setClickable(true);
-            return;
-        }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!isKeyFileOpen) {
+                            wApp.setIsIdentity(false);
+                            inputUserVerify.setError("Verification failure. Please make sure and try again.");
+                            inputUserVerify.requestFocus();
+                            btnUserVerify.setClickable(true);
+                            return;
+                        }
 
-        wApp.setPasswordOnRAM(password);
+                        wApp.setPasswordOnRAM(password);
+                        inputUserVerify.setText(null);
+                        ToastUtil.show(getBaseContext(), "Switched to main net.");
 
-        inputUserVerify.setText(null);
-        ToastUtil.show(getBaseContext(), "Identity verified.\nSwitched to main net.");
-
-        endIdentityVerify();
+                        endIdentityVerify();
+                    }
+                });
+            }
+        }, "MainActivity::userIdentityVerify").start();
     }
 
-    private void endIdentityVerify() {
+    private void verifyIdentityHideIME() {
         InputMethodManager imm = (InputMethodManager) btnUserVerify.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null && imm.isActive()) {
             imm.hideSoftInputFromWindow(btnUserVerify.getApplicationWindowToken(), 0);
         }
-        findViewById(R.id.toolbar).setVisibility(View.VISIBLE);
-        findViewById(R.id.cardsShell).setVisibility(View.VISIBLE);
-        findViewById(R.id.tabsContainer).setVisibility(View.VISIBLE);
+    }
+
+    private void endIdentityVerify() {
+        toolbar.setVisibility(View.VISIBLE);
+        cardsShell.setVisibility(View.VISIBLE);
+        tabsContainer.setVisibility(View.VISIBLE);
         tab.setVisibility(View.VISIBLE);
         wApp.setIsIdentity(true);
 
-        findViewById(R.id.userVerify).setVisibility(View.GONE);
+        userVerify.setVisibility(View.GONE);
         btnUserVerify.setClickable(true);
 
         // Load the wallet via user password.
@@ -322,11 +419,11 @@ public class MainActivity extends BaseActivity {
             if (intentResult.getContents() == null) {
                 ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
             } else {
-                ToastUtil.show(getBaseContext(), "QR code scanned, analyzing content.");
                 String scanResult = intentResult.getContents();
-                // TODO handle scan result.
-                ToastUtil.show(getBaseContext(), scanResult);
+                inputTransferTo.setText(scanResult);
+                attemptTransfer(false);
             }
+            return;
         }
 //            return;
 //        }
@@ -430,7 +527,7 @@ public class MainActivity extends BaseActivity {
 
     private void initToolbarMenu() {
         netState.setText(getString(R.string.main_menu_main_net).toUpperCase(Locale.getDefault()));
-        mainMenu.setOnClickListener(new View.OnClickListener() {
+        btnMainMenu.setOnClickListener(new View.OnClickListener() {
             private PopupMenu popupMenu;
 
             @Override
@@ -500,218 +597,179 @@ public class MainActivity extends BaseActivity {
     private synchronized void attemptTransfer(final boolean isButtonCall) {
         // Wallet
         final Wallet wallet = wApp.getWallet();
-        final EditText toAddress = findViewById(R.id.inputTransferTo);
-        final TextInputLayout amountLabel = findViewById(R.id.layAmount);
-        final EditText amountText = findViewById(R.id.inputAmount);
-        final TextView assetLabel = findViewById(R.id.labelAssetsTrans);
-        final RadioGroup assetRadioGroup = findViewById(R.id.inputAssetsTrans);
-        final Button btnTransfer = findViewById(R.id.btnTransferTo);
 
-        if (isButtonCall && amountLabel.getVisibility() == View.GONE) {
-            runOnUiThread(
-                    new Runnable() {
-                        @Override
-                        public void run() {
-                            // Toast please login first.
-                            ToastUtil.show(getBaseContext(), "Verifying input.");
-                        }
-                    }
-            );
+        inputTransferTo.setError(null);
+        inputAmount.setError(null);
 
-            toAddress.setError(null);
-            amountText.setError(null);
+        if (isButtonCall && layAmount.getVisibility() == View.GONE) {
+            // Toast please login first.
+            ToastUtil.show(getBaseContext(), "Verifying input.");
 
             if (wallet == null) {
-                runOnUiThread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                // Toast please login first.
-                                ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
-                            }
-                        }
-                );
+                // Toast please login first.
+                ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+
                 return;
             }
         }
-        final String toAddressStr = toAddress.getText().toString().trim();
-        if ("".equals(toAddressStr) || isButtonCall && wallet.getAddress().equals(toAddressStr)) {
+        final String toAddressStr = inputTransferTo.getText().toString().trim();
+        if ("".equals(toAddressStr) || wallet.getAddress().equals(toAddressStr)) {
             if (isButtonCall) {
-                runOnUiThread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                // Invalid text error.
-                                toAddress.setError("Invalid input.");
-                                toAddress.requestFocus();
-                                amountLabel.setVisibility(View.GONE);
-                                assetLabel.setVisibility(View.GONE);
-                                assetRadioGroup.setVisibility(View.GONE);
-                            }
-                        }
-                );
-            }
-            return;
-        }
-        if (toAddress.length() != ConfigList.NEO_ADDRESS_LENGTH || !ConfigList.NEO_ADDRESS_FIRST.equals(toAddressStr.substring(0, 1))) {
-            if (isButtonCall) {
-                runOnUiThread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                // Invalid text error.
-                                toAddress.setError("Invalid input.");
-                                toAddress.requestFocus();
-                                amountLabel.setVisibility(View.GONE);
-                                assetLabel.setVisibility(View.GONE);
-                                assetRadioGroup.setVisibility(View.GONE);
-                            }
-                        }
-                );
-            }
-            return;
-        }
-        // Send post to verify to address.
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                JSONRpcClient client = new JSONRpcClient.Builder()
-                        .net(WalletApplication.getNetUrlForNEO())
-                        .method("validateaddress")
-                        .params(toAddressStr)
-                        .id(toAddressStr)
-                        .build();
-                client.post(
-                        new Callback() {
-                            @Override
-                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                                e.printStackTrace();
-                                runOnUiThread(
-                                        new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                            }
-                                        }
-                                );
-                            }
+                // Invalid text error.
+                inputTransferTo.setError("Invalid input.");
+                inputTransferTo.requestFocus();
+                layAmount.setVisibility(View.GONE);
+                labelAssetsTrans.setVisibility(View.GONE);
+                inputAssetsTrans.setVisibility(View.GONE);
 
-                            @Override
-                            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                                final ValidateaddressBean responseBean;
-                                ResponseBody responseBody = response.body();
-                                if (responseBody != null) {
-                                    String body = responseBody.string();
-                                    responseBean = JSON.parseObject(body, ValidateaddressBean.class);
-                                    // The User input is a neo address.
-                                    if (responseBean.getResult().isIsvalid()) runOnUiThread(
+            }
+            return;
+        }
+
+        boolean isLooksLikeAnAddress = inputTransferTo.length() == ConfigList.NEO_ADDRESS_LENGTH && ConfigList.NEO_ADDRESS_FIRST.equals(toAddressStr.substring(0, 1));
+        // Send post to verify to address.
+        if (isLooksLikeAnAddress) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    JSONRpcClient client = new JSONRpcClient.Builder()
+                            .net(WalletApplication.getNetUrlForNEO())
+                            .method("validateaddress")
+                            .params(toAddressStr)
+                            .id(toAddressStr)
+                            .build();
+                    client.post(
+                            new Callback() {
+                                @Override
+                                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                                    e.printStackTrace();
+                                    runOnUiThread(
                                             new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    // Show transfer window.
-                                                    if (amountLabel.getVisibility() == View.GONE) {
-                                                        amountLabel.setVisibility(View.VISIBLE);
-                                                        assetLabel.setVisibility(View.VISIBLE);
-                                                        assetRadioGroup.setVisibility(View.VISIBLE);
-                                                        ToastUtil.show(getBaseContext(), "Address verified.");
-                                                    } else if (isButtonCall) {
-                                                        final String amountTrim = amountText.getText().toString().trim();
-                                                        if ("".equals(amountTrim)) {
-                                                            amountText.setError("Please input amount.");
-                                                            amountText.requestFocus();
-                                                            return;
-                                                        }
-                                                        int radioButtonId = assetRadioGroup.getCheckedRadioButtonId();
-                                                        RadioButton radioChecked = MainActivity.this.findViewById(radioButtonId);
-                                                        String assetName = radioChecked.getText().toString().trim();
-                                                        boolean isCoinInteger = !amountTrim.contains(".");
-                                                        boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
-                                                        boolean isCoinAmountOK = false;
-                                                        BigDecimal amountBigDecimal = BigDecimal.valueOf(Double.valueOf(amountTrim));
-
-                                                        if (getString(R.string.tnc).equals(assetName)) {
-                                                            if (isCoinInteger || isCoinDigitsValid) {
-                                                                isCoinAmountOK = true;
-                                                            } else {
-                                                                amountText.setError("TNC balance is a decimal up to 8 digits.");
-                                                            }
-                                                        } else if (getString(R.string.neo).equals(assetName)) {
-                                                            if (isCoinInteger) {
-                                                                isCoinAmountOK = true;
-                                                            } else {
-                                                                amountText.setError("NEO balance is a integer.");
-                                                            }
-                                                        } else if (getString(R.string.gas).equals(assetName)) {
-                                                            if (isCoinInteger || isCoinDigitsValid) {
-                                                                isCoinAmountOK = true;
-                                                            } else {
-                                                                amountText.setError("GAS balance is a decimal up to 8 digits.");
-                                                            }
-                                                        }
-
-                                                        if (!isCoinAmountOK) {
-                                                            amountText.requestFocus();
-                                                            return;
-                                                        }
-
-                                                        boolean isAmountEnough = amountBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
-
-                                                        if (!isAmountEnough) {
-                                                            amountText.setError("Balance of current asset is not enough.");
-                                                            amountText.requestFocus();
-                                                            return;
-                                                        }
-
-                                                        btnTransfer.setClickable(false);
-                                                        ToastUtil.show(getBaseContext(), "Doing transfer.\nIt takes a very short time.");
-                                                        postConstructTx(toAddressStr, amountTrim, assetName);
-                                                    }
+                                                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
                                                 }
                                             }
                                     );
-                                    else if (isButtonCall) {
-                                        // TODO Do something to know it is a gateway.
-                                        if (true) {
-                                            // TODO Gateway trade.
+                                }
+
+                                @Override
+                                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                                    final ValidateaddressBean responseBean;
+                                    ResponseBody responseBody = response.body();
+                                    if (responseBody != null) {
+                                        String body = responseBody.string();
+                                        responseBean = JSON.parseObject(body, ValidateaddressBean.class);
+                                        // The User input is a neo address.
+                                        if (responseBean.getResult().isIsvalid()) {
                                             runOnUiThread(
                                                     new Runnable() {
                                                         @Override
                                                         public void run() {
-                                                            amountLabel.setVisibility(View.GONE);
-                                                            assetLabel.setVisibility(View.GONE);
-                                                            assetRadioGroup.setVisibility(View.GONE);
+                                                            // Show transfer window.
+                                                            if (layAmount.getVisibility() == View.GONE) {
+                                                                layAmount.setVisibility(View.VISIBLE);
+                                                                labelAssetsTrans.setVisibility(View.VISIBLE);
+                                                                inputAssetsTrans.setVisibility(View.VISIBLE);
+                                                                ToastUtil.show(getBaseContext(), "Address verified.");
+                                                            } else if (isButtonCall) {
+                                                                final String amountTrim = inputAmount.getText().toString().trim();
+                                                                if ("".equals(amountTrim)) {
+                                                                    inputAmount.setError("Please input amount.");
+                                                                    inputAmount.requestFocus();
+                                                                    return;
+                                                                }
+                                                                int radioButtonId = inputAssetsTrans.getCheckedRadioButtonId();
+                                                                RadioButton radioChecked = MainActivity.this.findViewById(radioButtonId);
+                                                                String assetName = radioChecked.getText().toString().trim();
+                                                                boolean isCoinInteger = !amountTrim.contains(".");
+                                                                boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
+                                                                boolean isCoinAmountOK = false;
+                                                                BigDecimal amountBigDecimal = BigDecimal.valueOf(Double.valueOf(amountTrim));
+
+                                                                if (getString(R.string.tnc).equals(assetName)) {
+                                                                    if (isCoinInteger || isCoinDigitsValid) {
+                                                                        isCoinAmountOK = true;
+                                                                    } else {
+                                                                        inputAmount.setError("TNC balance is a decimal up to 8 digits.");
+                                                                    }
+                                                                } else if (getString(R.string.neo).equals(assetName)) {
+                                                                    if (isCoinInteger) {
+                                                                        isCoinAmountOK = true;
+                                                                    } else {
+                                                                        inputAmount.setError("NEO balance is a integer.");
+                                                                    }
+                                                                } else if (getString(R.string.gas).equals(assetName)) {
+                                                                    if (isCoinInteger || isCoinDigitsValid) {
+                                                                        isCoinAmountOK = true;
+                                                                    } else {
+                                                                        inputAmount.setError("GAS balance is a decimal up to 8 digits.");
+                                                                    }
+                                                                }
+
+                                                                if (!isCoinAmountOK) {
+                                                                    inputAmount.requestFocus();
+                                                                    return;
+                                                                }
+
+                                                                boolean isAmountEnough = amountBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
+
+                                                                if (!isAmountEnough) {
+                                                                    inputAmount.setError("Balance of current asset is not enough.");
+                                                                    inputAmount.requestFocus();
+                                                                    return;
+                                                                }
+
+                                                                btnTransferTo.setClickable(false);
+                                                                ToastUtil.show(getBaseContext(), "Doing transfer.\nIt takes a very short time.");
+                                                                postConstructTx(toAddressStr, amountTrim, assetName);
+                                                            }
                                                         }
                                                     }
                                             );
-                                        } else {
-                                            // All invalid.
-                                            runOnUiThread(
-                                                    new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            // Invalid text error.
-                                                            toAddress.setError("Invalid input.");
-                                                            toAddress.requestFocus();
-                                                            amountLabel.setVisibility(View.GONE);
-                                                            assetLabel.setVisibility(View.GONE);
-                                                            assetRadioGroup.setVisibility(View.GONE);
-                                                        }
-                                                    }
-                                            );
+                                        } else if (isButtonCall) {
+                                            // not address
+                                            verifyPaymentCode(isButtonCall);
                                         }
                                     }
                                 }
                             }
-                        }
-                );
-            }
-        }, "MainActivity::isValidAddress").start();
+                    );
+                }
+            }, "MainActivity::isValidAddress").start();
+        } else {
+            // not address
+            verifyPaymentCode(isButtonCall);
+        }
+    }
+
+    private void verifyPaymentCode(boolean isButtonCall) {
+        layAmount.setVisibility(View.GONE);
+        labelAssetsTrans.setVisibility(View.GONE);
+        inputAssetsTrans.setVisibility(View.GONE);
+
+        if (!isButtonCall) {
+            return;
+        }
+
+        final boolean isPaymentCode = false;
+        // TODO Do something to know it is a payment code.
+
+        if (isPaymentCode) {
+            // TODO Gateway trade.
+        } else {
+            // All invalid.
+
+            // Invalid text error.
+            inputTransferTo.setError("Invalid input.");
+            inputTransferTo.requestFocus();
+
+        }
     }
 
     private void postConstructTx(final String validToAddress, final String validAmount, final String assetName) {
         // Send post to transfer to address.
         final Wallet wallet = wApp.getWallet();
-        final Button btnTransfer = findViewById(R.id.btnTransferTo);
         if (wallet == null) {
             runOnUiThread(
                     new Runnable() {
@@ -719,7 +777,7 @@ public class MainActivity extends BaseActivity {
                         public void run() {
                             // Toast please login first.
                             ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
-                            btnTransfer.setClickable(true);
+                            btnTransferTo.setClickable(true);
                         }
                     }
             );
@@ -744,7 +802,7 @@ public class MainActivity extends BaseActivity {
                                     @Override
                                     public void run() {
                                         ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                        btnTransfer.setClickable(true);
+                                        btnTransferTo.setClickable(true);
                                     }
                                 }
                         );
@@ -763,7 +821,7 @@ public class MainActivity extends BaseActivity {
                                             public void run() {
                                                 // Toast please login first.
                                                 ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                                btnTransfer.setClickable(true);
+                                                btnTransferTo.setClickable(true);
                                             }
                                         }
                                 );
@@ -786,7 +844,6 @@ public class MainActivity extends BaseActivity {
     private void postSendrawtransaction(final String txData, final String txid, final String witness) {
         // Send post to transfer to address.
         final Wallet wallet = wApp.getWallet();
-        final Button btnTransfer = findViewById(R.id.btnTransferTo);
         if (wallet == null) {
             runOnUiThread(
                     new Runnable() {
@@ -794,7 +851,7 @@ public class MainActivity extends BaseActivity {
                         public void run() {
                             // Toast please login first.
                             ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
-                            btnTransfer.setClickable(true);
+                            btnTransferTo.setClickable(true);
                         }
                     }
             );
@@ -814,7 +871,7 @@ public class MainActivity extends BaseActivity {
                                 public void run() {
                                     // Toast please login first.
                                     ToastUtil.show(getBaseContext(), "Failed on signature.\nPlease try again later or contact the administrator.");
-                                    btnTransfer.setClickable(true);
+                                    btnTransferTo.setClickable(true);
                                 }
                             }
                     );
@@ -838,7 +895,7 @@ public class MainActivity extends BaseActivity {
                                     @Override
                                     public void run() {
                                         ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                        btnTransfer.setClickable(true);
+                                        btnTransferTo.setClickable(true);
                                     }
                                 }
                         );
@@ -856,7 +913,7 @@ public class MainActivity extends BaseActivity {
                                             @Override
                                             public void run() {
                                                 ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                                btnTransfer.setClickable(true);
+                                                btnTransferTo.setClickable(true);
                                             }
                                         }
                                 );
@@ -872,7 +929,7 @@ public class MainActivity extends BaseActivity {
                                     } else {
                                         ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
                                     }
-                                    btnTransfer.setClickable(true);
+                                    btnTransferTo.setClickable(true);
                                 }
                             });
                         }
@@ -884,9 +941,7 @@ public class MainActivity extends BaseActivity {
 
     private void initTabs() {
         // This is tab transfer.
-        final EditText toAddress = findViewById(R.id.inputTransferTo);
-        final Button btnTransfer = findViewById(R.id.btnTransferTo);
-        toAddress.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
@@ -896,7 +951,7 @@ public class MainActivity extends BaseActivity {
                 return false;
             }
         });
-        toAddress.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+        inputTransferTo.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean b) {
                 boolean focusOut = !b;
@@ -905,7 +960,7 @@ public class MainActivity extends BaseActivity {
                 }
             }
         });
-        btnTransfer.setOnClickListener(new View.OnClickListener() {
+        btnTransferTo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 attemptTransfer(true);
@@ -960,7 +1015,7 @@ public class MainActivity extends BaseActivity {
     private synchronized void refreshCardUI(View view) {
         Wallet wallet = wApp.getWallet();
         TextView cardHeader = view.findViewById(R.id.cardHeader);
-        TextView chainBalance = view.findViewById(R.id.cardChainBalance);
+        TextView cardChainBalance = view.findViewById(R.id.cardChainBalance);
         TextView channelBalance = view.findViewById(R.id.cardChannelBalance);
         TextView cardAddress = view.findViewById(R.id.cardAddress);
 
@@ -974,15 +1029,15 @@ public class MainActivity extends BaseActivity {
         if (split.length > 0) {
             switch (split[split.length - 1]) {
                 case "TNC":
-                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
                     channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
                     break;
                 case "NEO":
-                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
                     channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
                     break;
                 case "GAS":
-                    chainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
                     channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
                     break;
             }

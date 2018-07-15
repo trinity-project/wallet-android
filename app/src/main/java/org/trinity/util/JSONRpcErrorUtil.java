@@ -1,4 +1,4 @@
-package org.trinity.wallet.net;
+package org.trinity.util;
 
 import com.alibaba.fastjson.JSON;
 

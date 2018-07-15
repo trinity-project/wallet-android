@@ -77,7 +77,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:checkedButton="@id/rdoItmTNC"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="@id/labelAssets"
         app:layout_constraintLeft_toRightOf="@id/labelAssets"
@@ -130,6 +129,7 @@
 
     <Button
         android:id="@+id/btnTransferTo"
+        style="?android:textAppearanceSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"

@@ -80,7 +80,6 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:checkedButton="@id/rdoItmTNC"
         android:orientation="horizontal"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="@id/labelAssetsTrans"
@@ -88,14 +87,14 @@
         app:layout_constraintTop_toTopOf="@id/labelAssetsTrans">
 
         <RadioButton
-            android:id="@+id/rdoItmTNC"
+            android:id="@+id/rdoItmTNCTrans"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/tnc"
             android:textSize="16sp" />
 
         <RadioButton
-            android:id="@+id/rdoItmNEO"
+            android:id="@+id/rdoItmNEOTrans"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
@@ -103,7 +102,7 @@
             android:textSize="16sp" />
 
         <RadioButton
-            android:id="@+id/rdoItmGAS"
+            android:id="@+id/rdoItmGASTrans"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
@@ -113,6 +112,7 @@
 
     <Button
         android:id="@+id/btnTransferTo"
+        style="?android:textAppearanceSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"

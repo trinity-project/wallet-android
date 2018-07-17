@@ -4,10 +4,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ConfigList {
+    public static final String REGEX_IP_PORT = "^(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5]):([0-9]|[1-9]\\d{1,3}|[1-5]\\d{4}|6[0-5]{2}[0-3][0-5])$";
+
+
     public static final String MAIN_NET_URL = "http://47.96.175.193:21332";
     public static final String MAIN_NET_URL_FOR_NEO = "http://47.96.175.193:10332";
     public static final String TEST_NET_URL = "http://47.254.64.251:21332";
     public static final String TEST_NET_URL_FOR_NEO = "http://47.254.64.251:20332";
+    public static final String MAIN_NET_MAGIC = "763040120030515";
+    public static final String TEST_NET_MAGIC = "195378745719990331";
+
     public static final int COIN_TYPE_ACCOUNT = 3;
     public static final int SIGN_IN_RESULT = 1;
     public static final int SIGN_OUT_RESULT = 2;

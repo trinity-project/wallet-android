@@ -1,18 +1,19 @@
 package org.trinity.wallet.net.websocket;
 
-public class RegisterChannelFirstRequestBean extends BaseWebSocketBean {
+public class RegisterChannelReqBean extends BaseWebSocketBean {
     private String MessageType = "RegisterChannel";
     private String Sender;
     private String Receiver;
     private String ChannelName;
-    private MessageBody MessageBody;
+    private String Magic;
+    private MessageBodyBean MessageBody;
 
     public String getMessageType() {
         return MessageType;
     }
 
-    public void setMessageType(String MessageType) {
-        this.MessageType = MessageType;
+    public void setMessageType(String messageType) {
+        MessageType = messageType;
     }
 
     public String getSender() {
@@ -39,17 +40,25 @@ public class RegisterChannelFirstRequestBean extends BaseWebSocketBean {
         this.ChannelName = ChannelName;
     }
 
-    public MessageBody getMessageBody() {
+    public String getMagic() {
+        return Magic;
+    }
+
+    public void setMagic(String Magic) {
+        this.Magic = Magic;
+    }
+
+    public MessageBodyBean getMessageBody() {
         return MessageBody;
     }
 
-    public void setMessageBody(MessageBody MessageBody) {
+    public void setMessageBody(MessageBodyBean MessageBody) {
         this.MessageBody = MessageBody;
     }
 
-    public static class MessageBody {
+    public static class MessageBodyBean {
         private String AssetType;
-        private String Deposit;
+        private double Deposit;
 
         public String getAssetType() {
             return AssetType;
@@ -59,11 +68,11 @@ public class RegisterChannelFirstRequestBean extends BaseWebSocketBean {
             this.AssetType = AssetType;
         }
 
-        public String getDeposit() {
+        public double getDeposit() {
             return Deposit;
         }
 
-        public void setDeposit(String Deposit) {
+        public void setDeposit(double Deposit) {
             this.Deposit = Deposit;
         }
     }

@@ -1,8 +1,8 @@
 package org.trinity.wallet.net;
 
-import org.trinity.wallet.net.jsonrpc.RequestJSONRpcBean;
+import android.support.annotation.NonNull;
 
-import java.util.Arrays;
+import com.google.gson.Gson;
 
 import okhttp3.Request;
 import okhttp3.WebSocket;
@@ -11,10 +11,9 @@ import okhttp3.WebSocketListener;
 public class WebSocketClient extends AbstractClient {
     private WebSocket stepsWebSocket;
     private Request request;
-
     WebSocketClient(WebSocketClient.Builder builder) {
         request = new Request.Builder()
-                .url(builder.netUrl)
+                .url(builder.url)
                 .build();
     }
 
@@ -27,37 +26,13 @@ public class WebSocketClient extends AbstractClient {
     }
 
     public static final class Builder {
-        String netUrl;
-        RequestJSONRpcBean requestJSONRpcBean;
+        String url;
 
         public Builder() {
-            requestJSONRpcBean = new RequestJSONRpcBean();
-            requestJSONRpcBean.setJsonrpc("2.0");
-            requestJSONRpcBean.setId("1");
         }
 
-        public WebSocketClient.Builder net(String netUrl) {
-            this.netUrl = netUrl;
-            return this;
-        }
-
-        public WebSocketClient.Builder jsonrpc(String jsonrpc) {
-            requestJSONRpcBean.setJsonrpc(jsonrpc);
-            return this;
-        }
-
-        public WebSocketClient.Builder method(String method) {
-            requestJSONRpcBean.setMethod(method);
-            return this;
-        }
-
-        public WebSocketClient.Builder params(String... params) {
-            requestJSONRpcBean.setParams(Arrays.asList(params));
-            return this;
-        }
-
-        public WebSocketClient.Builder id(String id) {
-            requestJSONRpcBean.setId(id);
+        public WebSocketClient.Builder url(@NonNull String url) {
+            this.url = url;
             return this;
         }
 

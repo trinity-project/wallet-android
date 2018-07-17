@@ -6,6 +6,7 @@ import android.support.test.runner.AndroidJUnit4;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.trinity.util.EncryptUtil;
 import org.trinity.util.HexUtil;
 
 import neoutils.Neoutils;
@@ -56,5 +57,12 @@ public class ExampleInstrumentedTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    public void testMD5() {
+        String md5 = EncryptUtil.encodeMd5(String.valueOf(System.currentTimeMillis()) + "878787878787878787878787878787878787878787878787878787878787323232@12.21.21.21:1212");
+
+        System.out.println(md5);
     }
 }

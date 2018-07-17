@@ -1,17 +1,20 @@
 package org.trinity.wallet.net;
 
-import com.alibaba.fastjson.JSON;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.jsonrpc.RequestJSONRpcBean;
 
+import java.io.IOException;
 import java.util.Arrays;
 
-import okhttp3.Callback;
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class JSONRpcClient extends AbstractClient {
 
@@ -21,19 +24,32 @@ public class JSONRpcClient extends AbstractClient {
 
     JSONRpcClient(Builder builder) {
         this.url = builder.netUrl;
-        this.json = JSON.toJSONString(builder.requestJSONRpcBean);
+        this.json = WalletApplication.getGson().toJson(builder.requestJSONRpcBean);
         if (url == null || "".equals(url.trim())) {
             url = WalletApplication.getNetUrl();
         }
     }
 
-    public void post(Callback callback) {
+    public String post() {
         RequestBody requestBody = RequestBody.create(MEDIA_TYPE, json);
         Request request = new Request.Builder()
                 .url(url)
                 .post(requestBody)
                 .build();
-        client.newCall(request).enqueue(callback);
+        Response response;
+        try {
+            response = client.newCall(request).execute();
+            if (!response.isSuccessful()) {
+                return null;
+            }
+            ResponseBody body = response.body();
+            if (body == null) {
+                return null;
+            }
+            return body.string();
+        } catch (IOException ignored) {
+            return null;
+        }
     }
 
     public static final class Builder {
@@ -46,27 +62,27 @@ public class JSONRpcClient extends AbstractClient {
             requestJSONRpcBean.setId("1");
         }
 
-        public Builder net(String netUrl) {
+        public Builder net(@NonNull String netUrl) {
             this.netUrl = netUrl;
             return this;
         }
 
-        public Builder jsonrpc(String jsonrpc) {
+        public Builder jsonrpc(@NonNull String jsonrpc) {
             requestJSONRpcBean.setJsonrpc(jsonrpc);
             return this;
         }
 
-        public Builder method(String method) {
+        public Builder method(@NonNull String method) {
             requestJSONRpcBean.setMethod(method);
             return this;
         }
 
-        public Builder params(String... params) {
+        public Builder params(@NonNull String... params) {
             requestJSONRpcBean.setParams(Arrays.asList(params));
             return this;
         }
 
-        public Builder id(String id) {
+        public Builder id(@Nullable String id) {
             requestJSONRpcBean.setId(id);
             return this;
         }

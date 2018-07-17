@@ -3,6 +3,7 @@ package org.trinity.wallet;
 import android.app.Application;
 import android.content.SharedPreferences;
 
+import com.google.gson.Gson;
 import com.securepreferences.SecurePreferences;
 
 import org.trinity.wallet.entity.ChannelBean;
@@ -20,7 +21,9 @@ public final class WalletApplication extends Application {
      */
     private static String netUrl;
     private static String netUrlForNEO;
+    private static String magic;
     private static WalletApplication instance;
+    private static Gson gson = new Gson();
     private final String FIRST_TIME_USE = "FIRST_TIME_USE";
     /**
      * This is the NEO wallet model.
@@ -38,6 +41,10 @@ public final class WalletApplication extends Application {
     private String passwordOnRAM;
     private SharedPreferences userIdentityVerifyPrefs;
 
+    public static Gson getGson() {
+        return gson;
+    }
+
     public static String getNetUrl() {
         return netUrl;
     }
@@ -48,6 +55,10 @@ public final class WalletApplication extends Application {
 
     public static String getNetUrlForNEO() {
         return netUrlForNEO;
+    }
+
+    public static String getMagic() {
+        return magic;
     }
 
     public boolean isFirstTime() {
@@ -128,12 +139,16 @@ public final class WalletApplication extends Application {
         if (ConfigList.NET_TYPE_MAIN.equals(netType)) {
             netUrl = ConfigList.MAIN_NET_URL;
             netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
+            magic = ConfigList.MAIN_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
+            return;
         }
         if (ConfigList.NET_TYPE_TEST.equals(netType)) {
             netUrl = ConfigList.TEST_NET_URL;
             netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
+            magic = ConfigList.TEST_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
+            return;
         }
     }
 

@@ -3,6 +3,8 @@ package org.trinity.wallet.net;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
+import org.trinity.util.JSONRpcErrorUtil;
+import org.trinity.util.android.ToastUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.jsonrpc.RequestJSONRpcBean;
@@ -46,7 +48,12 @@ public class JSONRpcClient extends AbstractClient {
             if (body == null) {
                 return null;
             }
-            return body.string();
+            String bodyString = body.string();
+            boolean hasError = JSONRpcErrorUtil.hasError(bodyString);
+            if (hasError) {
+                return null;
+            }
+            return bodyString;
         } catch (IOException ignored) {
             return null;
         }

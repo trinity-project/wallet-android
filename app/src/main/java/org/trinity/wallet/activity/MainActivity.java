@@ -40,9 +40,9 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import org.trinity.util.HexUtil;
-import org.trinity.util.JSONRpcErrorUtil;
 import org.trinity.util.NeoSignUtil;
 import org.trinity.util.UUIDUtil;
+import org.trinity.util.WebSocketMessageTypeUtil;
 import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.android.ToastUtil;
 import org.trinity.util.android.UIStringUtil;
@@ -52,12 +52,15 @@ import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
+import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
 import org.trinity.wallet.net.jsonrpc.GetBalanceBean;
 import org.trinity.wallet.net.jsonrpc.SendrawtransactionBean;
 import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
-import org.trinity.wallet.net.websocket.FounderRespBean;
-import org.trinity.wallet.net.websocket.FounderSignReqBean;
-import org.trinity.wallet.net.websocket.RegisterChannelReqBean;
+import org.trinity.wallet.net.websocket.ACFounderBean;
+import org.trinity.wallet.net.websocket.ACFounderSignBean;
+import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
+import org.trinity.wallet.net.websocket.BaseWebSocketBean;
+import org.trinity.wallet.net.websocket.MessageTypeFilterBean;
 
 import java.math.BigDecimal;
 import java.util.Locale;
@@ -461,21 +464,18 @@ public class MainActivity extends BaseActivity {
                         .id("1")
                         .build();
 
-                final String reponse = client.post();
+                final String response = client.post();
 
                 runOnUiThread(new Runnable() {
                                   @Override
                                   public void run() {
-                                      if (reponse == null) {
+                                      if (response == null) {
                                           ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
                                           return;
                                       }
-                                      final GetBalanceBean responseBean;
-                                      if (MainActivity.this.jsonRpcErrorOccur(reponse)) {
-                                          return;
-                                      }
 
-                                      responseBean = gson.fromJson(reponse, GetBalanceBean.class);
+                                      GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
+
                                       wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
                                       wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
                                       wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
@@ -488,23 +488,22 @@ public class MainActivity extends BaseActivity {
         }, "MainActivity::postGetBalance").start();
     }
 
-    private boolean jsonRpcErrorOccur(String body) {
-        return jsonRpcErrorOccur(JSONRpcErrorUtil.hasError(body));
-    }
-
-    private boolean jsonRpcErrorOccur(boolean hasError) {
+    private boolean postGetBalanceShouldRetry(boolean keepTry) {
         synchronized (this) {
-            boolean triedForTimes = retryTimesNow == ConfigList.RETRY_TIMES;
-            if (!hasError || triedForTimes) {
+            if (!keepTry) {
                 retryTimesNow = 0;
-                if (triedForTimes) {
-                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                }
-            } else {
-                retryTimesNow++;
-                postGetBalance();
+                return false;
             }
-            return hasError;
+
+            if (retryTimesNow == ConfigList.RETRY_TIMES) {
+                retryTimesNow = 0;
+                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                return false;
+            }
+
+            retryTimesNow++;
+            postGetBalance();
+            return true;
         }
     }
 
@@ -591,6 +590,8 @@ public class MainActivity extends BaseActivity {
                 ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
                 return;
             }
+
+            postGetBalance();
         }
 
         final String toAddressStr = inputTransferTo.getText().toString().trim();
@@ -650,6 +651,7 @@ public class MainActivity extends BaseActivity {
                             inputAssetsTrans.setVisibility(View.VISIBLE);
                             if (doPay) {
                                 ToastUtil.show(getBaseContext(), "Address verified.");
+                                inputAmount.requestFocus();
                             }
                             return;
                         }
@@ -789,13 +791,6 @@ public class MainActivity extends BaseActivity {
                             return;
                         }
 
-                        boolean hasError = JSONRpcErrorUtil.hasError(response);
-                        if (hasError) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                            btnTransferTo.setClickable(true);
-                            return;
-                        }
-
                         final ConstructTxBean bean = gson.fromJson(response, ConstructTxBean.class);
                         postSendrawtransaction(bean.getResult().getTxData(), bean.getResult().getTxid(), bean.getResult().getWitness());
                     }
@@ -831,13 +826,6 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                            btnTransferTo.setClickable(true);
-                            return;
-                        }
-
-                        boolean hasError = JSONRpcErrorUtil.hasError(response);
-                        if (hasError) {
                             ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
                             btnTransferTo.setClickable(true);
                             return;
@@ -939,6 +927,8 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
+        postGetBalance();
+
         final String publicKeyHex = HexUtil.byteArrayToHex(wallet.getPublicKey());
 
         if (wallet.getPublicKey() == null || "".equals(publicKeyHex)) {
@@ -960,7 +950,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        String sTNAP_PublicKey = sTNAPSplit[0];
+        final String sTNAP_PublicKey = sTNAPSplit[0];
         String sTNAP_IpPort = sTNAPSplit[1];
         String sTNAP_IpPort8766 = sTNAP_IpPort.split(":")[0] + ":8766";
         if (!sTNAP_PublicKey.matches("[0-9a-f]{66}")) {
@@ -1038,7 +1028,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        String aliasTrim = inputAlias.getText().toString().trim();
+        final String aliasTrim = inputAlias.getText().toString().trim();
 
         if ("".equals(aliasTrim)) {
             inputAlias.setError("Alias is required.");
@@ -1052,34 +1042,42 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        ToastUtil.show(getBaseContext(), "Doing add channel.\nIt takes a very short time.");
-        btnAddChannel.setClickable(false);
-        tabChannelList.callOnClick();
-        btnAddChannel.setClickable(true);
+        final String sTNAP8766 = (publicKeyHex + "@" + sTNAP_IpPort8766).toLowerCase();
 
-        RegisterChannelReqBean requestBean = new RegisterChannelReqBean();
+        ToastUtil.show(getBaseContext(), "Doing add channel.\nIt takes a very short time.");
+
         final WebSocketClient webSocketClient = new WebSocketClient.Builder()
                 .url("ws://" + sTNAP_IpPort8766)
                 .build();
-        final String sTNAP8766 = (publicKeyHex + "@" + sTNAP_IpPort8766).toLowerCase();
         new Thread(new Runnable() {
+            private boolean iAmSender = true;
+
+            private ACRegisterChannelBean req_1;
+            private ACFounderBean resp_2;
+            private ACFounderSignBean req_3;
+            private JSONRpcClient client_4;
+            private FunderTransactionBean resp_5;
+            private ACFounderBean req_6;
+            private ACFounderSignBean resp_7;
+            private JSONRpcClient client_8;
+            private SendrawtransactionBean resp_9;
+
             @Override
             public void run() {
                 webSocketClient.connect(new WebSocketListener() {
                     @Override
                     public void onOpen(WebSocket webSocket, Response response) {
                         super.onOpen(webSocket, response);
-                        RegisterChannelReqBean req_1 = new RegisterChannelReqBean();
+                        req_1 = new ACRegisterChannelBean();
                         req_1.setSender(sTNAP8766);
                         req_1.setReceiver(sTNAPTrim);
                         req_1.setMagic(WalletApplication.getMagic());
                         req_1.setChannelName(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine());
-                        RegisterChannelReqBean.MessageBodyBean messageBody = new RegisterChannelReqBean.MessageBodyBean();
+                        ACRegisterChannelBean.MessageBodyBean messageBody = new ACRegisterChannelBean.MessageBodyBean();
                         messageBody.setAssetType(assetName);
                         messageBody.setDeposit(Double.parseDouble(depositTrim));
                         req_1.setMessageBody(messageBody);
                         String text = gson.toJson(req_1);
-                        System.out.println(text);
                         webSocket.send(text);
                     }
 
@@ -1087,33 +1085,147 @@ public class MainActivity extends BaseActivity {
                     public void onMessage(WebSocket webSocket, String text) {
                         super.onMessage(webSocket, text);
 
-                        // TODO add channel callback
-                        System.out.println(text);
+                        String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
 
-                        if (text.contains("\"Founder\"")) {
-                            FounderRespBean resp_1 = gson.fromJson(text, FounderRespBean.class);
-                            FounderSignReqBean req_2 = new FounderSignReqBean();
-                            req_2.setSender(sTNAP8766);
-                            req_2.setReceiver(sTNAPTrim);
-                            req_2.setChannelName(resp_1.getChannelName());
-                            req_2.setTxNonce(resp_1.getTxNonce());
-                            FounderSignReqBean.MessageBodyBean messageBody = new FounderSignReqBean.MessageBodyBean();
-                            FounderSignReqBean.MessageBodyBean.FounderBean founder = new FounderSignReqBean.MessageBodyBean.FounderBean();
-                            founder.setTxDataSign(NeoSignUtil.signToHex(resp_1.getMessageBody().getFounder().getTxData(), wallet.getPublicKey()));
-                            founder.setOriginalData(gson.fromJson(gson.toJson(resp_1.getMessageBody().getFounder()), FounderSignReqBean.MessageBodyBean.FounderBean.OriginalDataBean.class));
-                            messageBody.setFounder(founder);
-                            FounderSignReqBean.MessageBodyBean.CommitmentBean commitment = new FounderSignReqBean.MessageBodyBean.CommitmentBean();
-                            commitment.setTxDataSign(NeoSignUtil.signToHex(resp_1.getMessageBody().getCommitment().getTxData(), wallet.getPublicKey()));
-                            commitment.setOriginalData(gson.fromJson(gson.toJson(resp_1.getMessageBody().getCommitment()), FounderSignReqBean.MessageBodyBean.CommitmentBean.OriginalDataBeanX.class));
-                            messageBody.setCommitment(commitment);
-                            FounderSignReqBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery = new FounderSignReqBean.MessageBodyBean.RevocableDeliveryBean();
-                            revocableDelivery.setTxDataSign(NeoSignUtil.signToHex(resp_1.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
-                            revocableDelivery.setOriginalData(gson.fromJson(gson.toJson(resp_1.getMessageBody().getRevocableDelivery()), FounderSignReqBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanXX.class));
-                            messageBody.setRevocableDelivery(revocableDelivery);
-                            messageBody.setAssetType(resp_1.getMessageBody().getAssetType());
-                            messageBody.setDeposit(resp_1.getMessageBody().getDeposit());
-                            messageBody.setRoleIndex(resp_1.getMessageBody().getRoleIndex());
-                            req_2.setMessageBody(messageBody);
+                        if (iAmSender) {
+                            if ("Founder".equals(messageTypeStr)) {
+                                resp_2 = gson.fromJson(text, ACFounderBean.class);
+                                req_3 = new ACFounderSignBean();
+                                req_3.setSender(sTNAP8766);
+                                req_3.setReceiver(sTNAPTrim);
+                                req_3.setChannelName(resp_2.getChannelName());
+                                req_3.setTxNonce(resp_2.getTxNonce());
+                                ACFounderSignBean.MessageBodyBean messageBody3 = new ACFounderSignBean.MessageBodyBean();
+                                ACFounderSignBean.MessageBodyBean.FounderBean founder3 = new ACFounderSignBean.MessageBodyBean.FounderBean();
+                                founder3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getFounder().getTxData(), wallet.getPrivateKey()));
+                                founder3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getFounder()), ACFounderSignBean.MessageBodyBean.FounderBean.OriginalDataBean.class));
+                                messageBody3.setFounder(founder3);
+                                ACFounderSignBean.MessageBodyBean.CommitmentBean commitment3 = new ACFounderSignBean.MessageBodyBean.CommitmentBean();
+                                commitment3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
+                                commitment3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getCommitment()), ACFounderSignBean.MessageBodyBean.CommitmentBean.OriginalDataBeanX.class));
+                                messageBody3.setCommitment(commitment3);
+                                ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery3 = new ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean();
+                                revocableDelivery3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
+                                revocableDelivery3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getRevocableDelivery()), ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanXX.class));
+                                messageBody3.setRevocableDelivery(revocableDelivery3);
+                                messageBody3.setAssetType(resp_2.getMessageBody().getAssetType());
+                                messageBody3.setDeposit(resp_2.getMessageBody().getDeposit());
+                                messageBody3.setRoleIndex(resp_2.getMessageBody().getRoleIndex());
+                                req_3.setMessageBody(messageBody3);
+                                String send3 = gson.toJson(req_3);
+                                webSocket.send(send3);
+
+                                client_4 = new JSONRpcClient.Builder()
+                                        .net(WalletApplication.getNetUrl())
+                                        .method("FunderTransaction")
+                                        .params(publicKeyHex,
+                                                sTNAP_PublicKey,
+                                                resp_2.getMessageBody().getFounder().getAddressFunding(),
+                                                resp_2.getMessageBody().getFounder().getScriptFunding(),
+                                                String.valueOf(resp_2.getMessageBody().getDeposit()),
+                                                String.valueOf(resp_2.getMessageBody().getDeposit()),
+                                                resp_2.getMessageBody().getFounder().getTxId(),
+                                                ConfigList.ASSET_ID_MAP.get(resp_2.getMessageBody().getAssetType().trim().toUpperCase()))
+                                        .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
+                                        .build();
+
+                                String json_5 = client_4.post();
+
+                                if (json_5 == null) {
+                                    runOnUiThread(
+                                            new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                                }
+                                            }
+                                    );
+                                    webSocket.cancel();
+                                    return;
+                                }
+
+                                resp_5 = gson.fromJson(json_5, FunderTransactionBean.class);
+
+                                req_6 = new ACFounderBean();
+                                req_6.setChannelName(resp_2.getChannelName());
+                                req_6.setSender(sTNAP8766);
+                                req_6.setReceiver(sTNAPTrim);
+                                req_6.setTxNonce(resp_2.getTxNonce());
+                                ACFounderBean.MessageBodyBean messageBody4 = new ACFounderBean.MessageBodyBean();
+                                messageBody4.setAssetType(resp_2.getMessageBody().getAssetType());
+                                messageBody4.setDeposit(resp_2.getMessageBody().getDeposit());
+                                messageBody4.setRoleIndex(resp_2.getMessageBody().getRoleIndex() + 1);
+                                messageBody4.setFounder(resp_2.getMessageBody().getFounder());
+                                messageBody4.setCommitment(gson.fromJson(gson.toJson(resp_5.getResult().getC_TX()), ACFounderBean.MessageBodyBean.CommitmentBean.class));
+                                messageBody4.setRevocableDelivery(gson.fromJson(gson.toJson(resp_5.getResult().getR_TX()), ACFounderBean.MessageBodyBean.RevocableDeliveryBean.class));
+                                req_6.setMessageBody(messageBody4);
+
+                                String send6 = gson.toJson(req_6);
+                                webSocket.send(send6);
+
+                                return;
+                            }
+
+                            if ("FounderSign".equals(messageTypeStr)) {
+                                resp_7 = gson.fromJson(text, ACFounderSignBean.class);
+                                client_8 = new JSONRpcClient.Builder()
+                                        .net(WalletApplication.getNetUrlForNEO())
+                                        .method("sendrawtransaction")
+                                        .params(resp_7.getMessageBody().getFounder().getOriginalData().getTxData() + resp_7.getMessageBody().getFounder().getOriginalData().getWitness().replace("{signOther}", resp_7.getMessageBody().getFounder().getTxDataSign()).replace("{signSelf}", req_3.getMessageBody().getFounder().getTxDataSign()))
+                                        .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
+                                        .build();
+
+                                String json_9 = client_8.post();
+
+                                if (json_9 == null) {
+                                    runOnUiThread(
+                                            new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                                }
+                                            }
+                                    );
+                                    webSocket.cancel();
+                                    return;
+                                }
+
+                                resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
+
+                                if (resp_9.isResult()) {
+                                    runOnUiThread(
+                                            new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
+                                                }
+                                            }
+                                    );
+                                    webSocket.cancel();
+                                    return;
+                                }
+
+                                if (!resp_9.isResult()) {
+                                    iAmSender = false;
+
+                                    // TODO mirror add channel.
+                                }
+                            }
+                            return;
+                        }
+
+                        if (!iAmSender) {
+                            if (text.contains("\"RegisterChannel\"")) {
+
+                            }
+
+                            if (text.contains("\"FounderSign\"")) {
+
+                            }
+
+                            if (text.contains("\"Founder\"")) {
+
+                            }
                         }
                     }
 

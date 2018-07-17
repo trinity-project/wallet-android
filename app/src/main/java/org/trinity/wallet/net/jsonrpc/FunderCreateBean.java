@@ -1,77 +1,20 @@
-package org.trinity.wallet.net.websocket;
+package org.trinity.wallet.net.jsonrpc;
 
-public class FounderRespBean extends BaseWebSocketBean {
-    private String MessageType;
-    private String Sender;
-    private String Receiver;
-    private int TxNonce;
-    private String ChannelName;
-    private MessageBodyBean MessageBody;
-    private Object Comments;
+public class FunderCreateBean extends BaseJSONRpcBean {
+    private ResultBean result;
 
-    public String getMessageType() {
-        return MessageType;
+    public ResultBean getResult() {
+        return result;
     }
 
-    public void setMessageType(String MessageType) {
-        this.MessageType = MessageType;
+    public void setResult(ResultBean result) {
+        this.result = result;
     }
 
-    public String getSender() {
-        return Sender;
-    }
-
-    public void setSender(String Sender) {
-        this.Sender = Sender;
-    }
-
-    public String getReceiver() {
-        return Receiver;
-    }
-
-    public void setReceiver(String Receiver) {
-        this.Receiver = Receiver;
-    }
-
-    public int getTxNonce() {
-        return TxNonce;
-    }
-
-    public void setTxNonce(int TxNonce) {
-        this.TxNonce = TxNonce;
-    }
-
-    public String getChannelName() {
-        return ChannelName;
-    }
-
-    public void setChannelName(String ChannelName) {
-        this.ChannelName = ChannelName;
-    }
-
-    public MessageBodyBean getMessageBody() {
-        return MessageBody;
-    }
-
-    public void setMessageBody(MessageBodyBean MessageBody) {
-        this.MessageBody = MessageBody;
-    }
-
-    public Object getComments() {
-        return Comments;
-    }
-
-    public void setComments(Object Comments) {
-        this.Comments = Comments;
-    }
-
-    public static class MessageBodyBean {
+    public static class ResultBean {
         private FounderBean Founder;
-        private CommitmentBean Commitment;
-        private RevocableDeliveryBean RevocableDelivery;
-        private String AssetType;
-        private double Deposit;
-        private int RoleIndex;
+        private CTXBean C_TX;
+        private RTXBean R_TX;
 
         public FounderBean getFounder() {
             return Founder;
@@ -81,44 +24,20 @@ public class FounderRespBean extends BaseWebSocketBean {
             this.Founder = Founder;
         }
 
-        public CommitmentBean getCommitment() {
-            return Commitment;
+        public CTXBean getC_TX() {
+            return C_TX;
         }
 
-        public void setCommitment(CommitmentBean Commitment) {
-            this.Commitment = Commitment;
+        public void setC_TX(CTXBean C_TX) {
+            this.C_TX = C_TX;
         }
 
-        public RevocableDeliveryBean getRevocableDelivery() {
-            return RevocableDelivery;
+        public RTXBean getR_TX() {
+            return R_TX;
         }
 
-        public void setRevocableDelivery(RevocableDeliveryBean RevocableDelivery) {
-            this.RevocableDelivery = RevocableDelivery;
-        }
-
-        public String getAssetType() {
-            return AssetType;
-        }
-
-        public void setAssetType(String AssetType) {
-            this.AssetType = AssetType;
-        }
-
-        public double getDeposit() {
-            return Deposit;
-        }
-
-        public void setDeposit(double Deposit) {
-            this.Deposit = Deposit;
-        }
-
-        public int getRoleIndex() {
-            return RoleIndex;
-        }
-
-        public void setRoleIndex(int RoleIndex) {
-            this.RoleIndex = RoleIndex;
+        public void setR_TX(RTXBean R_TX) {
+            this.R_TX = R_TX;
         }
 
         public static class FounderBean {
@@ -169,7 +88,7 @@ public class FounderRespBean extends BaseWebSocketBean {
             }
         }
 
-        public static class CommitmentBean {
+        public static class CTXBean {
             private String txData;
             private String addressRSMC;
             private String scriptRSMC;
@@ -217,7 +136,7 @@ public class FounderRespBean extends BaseWebSocketBean {
             }
         }
 
-        public static class RevocableDeliveryBean {
+        public static class RTXBean {
             private String txData;
             private String txId;
             private String witness;
@@ -248,4 +167,3 @@ public class FounderRespBean extends BaseWebSocketBean {
         }
     }
 }
-

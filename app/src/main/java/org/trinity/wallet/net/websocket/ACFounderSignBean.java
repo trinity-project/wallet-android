@@ -1,12 +1,15 @@
 package org.trinity.wallet.net.websocket;
 
-public class FounderSignReqBean extends BaseWebSocketBean {
-    private String MessageType;
+import org.trinity.wallet.net.websocket.BaseWebSocketBean;
+
+public class ACFounderSignBean extends BaseWebSocketBean {
+    private String MessageType = "FounderSign";
     private String Sender;
     private String Receiver;
     private String ChannelName;
     private int TxNonce;
     private MessageBodyBean MessageBody;
+    private Object Comments;
 
     public String getMessageType() {
         return MessageType;
@@ -54,6 +57,14 @@ public class FounderSignReqBean extends BaseWebSocketBean {
 
     public void setMessageBody(MessageBodyBean MessageBody) {
         this.MessageBody = MessageBody;
+    }
+
+    public Object getComments() {
+        return Comments;
+    }
+
+    public void setComments(Object Comments) {
+        this.Comments = Comments;
     }
 
     public static class MessageBodyBean {

@@ -1,6 +1,8 @@
 package org.trinity.wallet.net.websocket;
 
-public class RegisterChannelReqBean extends BaseWebSocketBean {
+import org.trinity.wallet.net.websocket.BaseWebSocketBean;
+
+public class ACRegisterChannelBean extends BaseWebSocketBean {
     private String MessageType = "RegisterChannel";
     private String Sender;
     private String Receiver;

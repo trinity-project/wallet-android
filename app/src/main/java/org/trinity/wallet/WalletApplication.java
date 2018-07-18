@@ -195,26 +195,29 @@ public final class WalletApplication extends Application {
     }
 
     public synchronized void switchNet(String netType) {
-        if (ConfigList.NET_TYPE_MAIN.equals(netType)) {
-            net = netType;
-            netUrl = ConfigList.MAIN_NET_URL;
-            netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
-            magic = ConfigList.MAIN_NET_MAGIC;
-            ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
-            saveGlobal();
-            loadData();
+        switch (netType) {
+            case ConfigList.NET_TYPE_MAIN:
+                net = netType;
+                netUrl = ConfigList.MAIN_NET_URL;
+                netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
+                magic = ConfigList.MAIN_NET_MAGIC;
+                ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
+                saveGlobal();
+                break;
+            case ConfigList.NET_TYPE_TEST:
+                net = netType;
+                netUrl = ConfigList.TEST_NET_URL;
+                netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
+                magic = ConfigList.TEST_NET_MAGIC;
+                ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
+                saveGlobal();
+                break;
+        }
+        if (wallet == null) {
             return;
         }
-        if (ConfigList.NET_TYPE_TEST.equals(netType)) {
-            net = netType;
-            netUrl = ConfigList.TEST_NET_URL;
-            netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
-            magic = ConfigList.TEST_NET_MAGIC;
-            ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
-            saveGlobal();
-            loadData();
-            return;
-        }
+
+        loadData();
     }
 
     public Wallet getWallet() {
@@ -279,6 +282,7 @@ public final class WalletApplication extends Application {
 
     public void setChannelList(List<Map<String, ChannelBean>> channelList) {
         this.channelList = channelList;
+        saveData();
     }
 
     public List<Map<String, RecordBean>> getRecordList() {
@@ -287,6 +291,7 @@ public final class WalletApplication extends Application {
 
     public void setRecordList(List<Map<String, RecordBean>> recordList) {
         this.recordList = recordList;
+        saveData();
     }
 
     public void setIsIdentity(boolean isIdentity) {

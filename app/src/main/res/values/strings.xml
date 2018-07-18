@@ -50,4 +50,9 @@
     <string name="confirm">Confirm</string>
     <string name="change_password">Change Password</string>
     <string name="user_verify_logo">userVerifyLogo</string>
+    <string name="record_price">Price: %1$s %2$s</string>
+    <string name="record_fee">Fee: %1$s %2$s</string>
+    <string name="channel_deposit">Deposit: %1$s %2$s</string>
+    <string name="channel_balance">Balance: %1$s %2$s</string>
+    <string name="channel_state">State: %1$s</string>
 </resources>

@@ -12,14 +12,14 @@
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
         android:text="_DEFAULT_CHANNEL_NAME_"
-        android:textSize="16dp"
+        android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
-        android:id="@+id/channelListNumLine"
+        android:id="@+id/channelNumLine"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="16dp"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
@@ -29,23 +29,23 @@
         app:layout_constraintTop_toBottomOf="@+id/channelName">
 
         <TextView
-            android:id="@+id/channelListDeposit"
+            android:id="@+id/channelDeposit"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="10"
-            android:text="Deposit: %1$d %2$s" />
+            android:text="@string/channel_deposit" />
 
         <TextView
-            android:id="@+id/channelListBalance"
+            android:id="@+id/channelBalance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="10"
-            android:text="Balance: %1$d %2$s" />
+            android:text="@string/channel_balance" />
 
         <ImageButton
-            android:id="@+id/channelListClose"
+            android:id="@+id/channelClose"
             android:layout_width="16dp"
-            android:layout_height="match_parent"
+            android:layout_height="28dp"
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
             android:contentDescription="@string/btn_channel_close"
@@ -53,7 +53,7 @@
     </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/channelListWordLine"
+        android:id="@+id/channelWordLine"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
@@ -62,13 +62,13 @@
         android:orientation="horizontal"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/channelListNumLine">
+        app:layout_constraintTop_toBottomOf="@+id/channelNumLine">
 
         <TextView
-            android:id="@+id/channelListStatus"
+            android:id="@+id/channelState"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status: %1$s" />
+            android:text="@string/channel_state" />
     </LinearLayout>
 
     <View
@@ -80,5 +80,5 @@
         android:background="@drawable/shape_dash_line"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/channelListWordLine" />
+        app:layout_constraintTop_toBottomOf="@+id/channelWordLine" />
 </android.support.constraint.ConstraintLayout>

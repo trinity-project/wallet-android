@@ -34,6 +34,7 @@ public final class ConfigList {
     public static final int USER_PASSWORD_MAX = 16;
     public static final int QR_CODE_WIDTH = 200;
     public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
+    public static final String CHANNEL_STATUS_CLEAR = "Clear";
 
     public static final Map<String, String> ASSET_ID_MAP = new HashMap<>();
     public static final String ASSET_ID_MAP_KEY_TNC = "TNC";

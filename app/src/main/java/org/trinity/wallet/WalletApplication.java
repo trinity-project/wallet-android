@@ -2,6 +2,8 @@ package org.trinity.wallet;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.securepreferences.SecurePreferences;
@@ -19,12 +21,13 @@ public final class WalletApplication extends Application {
     /**
      * The net url of neo.
      */
+    private static String net;
     private static String netUrl;
     private static String netUrlForNEO;
     private static String magic;
     private static WalletApplication instance;
     private static Gson gson = new Gson();
-    private final String FIRST_TIME_USE = "FIRST_TIME_USE";
+    private final String NOT_FIRST_TIME = "NOT_FIRST_TIME";
     /**
      * This is the NEO wallet model.
      */
@@ -39,7 +42,7 @@ public final class WalletApplication extends Application {
     private List<RecordBean> recordList;
     private boolean isIdentity;
     private String passwordOnRAM;
-    private SharedPreferences userIdentityVerifyPrefs;
+    private SharedPreferences identityVerifyPrefs;
 
     public static Gson getGson() {
         return gson;
@@ -62,37 +65,43 @@ public final class WalletApplication extends Application {
     }
 
     public boolean isFirstTime() {
-        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), FIRST_TIME_USE, "first_time_use.xml");
-        String firstTimeUseString = first_time_use.getString(FIRST_TIME_USE, null);
-        return firstTimeUseString == null || !FIRST_TIME_USE.equals(firstTimeUseString);
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
+        String firstTimeUseString = first_time_use.getString(NOT_FIRST_TIME, null);
+        return firstTimeUseString == null || !NOT_FIRST_TIME.equals(firstTimeUseString);
     }
 
-    public void iAmNotFirstTime(String password) {
-        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), FIRST_TIME_USE, "first_time_use.xml");
-        SharedPreferences.Editor editor = first_time_use.edit();
-        editor.clear();
-        editor.putString(FIRST_TIME_USE, FIRST_TIME_USE);
-        editor.apply();
-        userIdentityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
-        SharedPreferences.Editor editorUserIdentityVerify = userIdentityVerifyPrefs.edit();
-        editorUserIdentityVerify.remove(ConfigList.USER_PASSWORD_KEY);
-        editorUserIdentityVerify.putString(ConfigList.USER_PASSWORD_KEY, password);
-        editorUserIdentityVerify.apply();
+    public void iAmNotFirstTime(@Nullable String oldPassword, @NonNull String newPassword) {
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
+        SharedPreferences.Editor editorFirstTimeUse = first_time_use.edit();
+        editorFirstTimeUse.clear();
+        editorFirstTimeUse.putString(NOT_FIRST_TIME, NOT_FIRST_TIME);
+        editorFirstTimeUse.apply();
+
+        identityVerifyPrefs = new SecurePreferences(this.getBaseContext(), newPassword, "user_prefs.xml");
+
+        if (oldPassword != null) {
+            // TODO move things from old to new and then delete old.
+        }
+
+        SharedPreferences.Editor editorIdentityVerify = identityVerifyPrefs.edit();
+        editorIdentityVerify.remove(ConfigList.USER_PASSWORD_KEY);
+        editorIdentityVerify.putString(ConfigList.USER_PASSWORD_KEY, newPassword);
+        editorIdentityVerify.apply();
     }
 
     public boolean isKeyFileOpen(String password) {
-        userIdentityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
-        String passwordInShare = userIdentityVerifyPrefs.getString(ConfigList.USER_PASSWORD_KEY, null);
+        identityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
+        String passwordInShare = identityVerifyPrefs.getString(ConfigList.USER_PASSWORD_KEY, null);
         if (passwordInShare != null && password.equals(passwordInShare)) {
             return true;
         } else {
-            userIdentityVerifyPrefs = null;
+            identityVerifyPrefs = null;
             return false;
         }
     }
 
-    public void save() {
-        SharedPreferences.Editor editor = userIdentityVerifyPrefs.edit();
+    public void saveIdentity() {
+        SharedPreferences.Editor editor = identityVerifyPrefs.edit();
         editor.remove(ConfigList.SAVE_KEY);
         boolean isValidWIF = wallet != null && wallet.getWIF() != null && !"".equals(wallet.getWIF()) && wallet.getAddress() != null && !"".equals(wallet.getAddress());
         if (isValidWIF) {
@@ -101,8 +110,8 @@ public final class WalletApplication extends Application {
         editor.apply();
     }
 
-    public void load() {
-        String secureWIF = userIdentityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
+    public void loadIdentity() {
+        String secureWIF = identityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
         if (secureWIF == null || "".equals(secureWIF)) {
             return;
         }
@@ -119,11 +128,39 @@ public final class WalletApplication extends Application {
         wallet = wifGenWallet;
     }
 
+    public void saveData() {
+        // TODO channel list record list
+        if (ConfigList.NET_TYPE_MAIN.equals(net)) {
+            return;
+        }
+        if (ConfigList.NET_TYPE_TEST.equals(net)) {
+            return;
+        }
+    }
+
+    public void loadData() {
+        // TODO channel list record list
+        if (ConfigList.NET_TYPE_MAIN.equals(net)) {
+            return;
+        }
+        if (ConfigList.NET_TYPE_TEST.equals(net)) {
+            return;
+        }
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
         instance = this;
+        // TODO save net state
+//        switchNet(net);
         switchNet(ConfigList.NET_TYPE_MAIN);
+    }
+
+    public void logOut() {
+        clearBalance();
+        channelList = null;
+        recordList = null;
     }
 
     public void clearBalance() {
@@ -137,17 +174,21 @@ public final class WalletApplication extends Application {
 
     public void switchNet(String netType) {
         if (ConfigList.NET_TYPE_MAIN.equals(netType)) {
+            net = netType;
             netUrl = ConfigList.MAIN_NET_URL;
             netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
             magic = ConfigList.MAIN_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
+            loadData();
             return;
         }
         if (ConfigList.NET_TYPE_TEST.equals(netType)) {
+            net = netType;
             netUrl = ConfigList.TEST_NET_URL;
             netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
             magic = ConfigList.TEST_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
+            loadData();
             return;
         }
     }
@@ -213,6 +254,7 @@ public final class WalletApplication extends Application {
     }
 
     public void setChannelList(List<ChannelBean> channelList) {
+        saveIdentity();
         this.channelList = channelList;
     }
 
@@ -221,6 +263,7 @@ public final class WalletApplication extends Application {
     }
 
     public void setRecordList(List<RecordBean> recordList) {
+        saveIdentity();
         this.recordList = recordList;
     }
 
@@ -244,4 +287,3 @@ public final class WalletApplication extends Application {
         this.passwordOnRAM = passwordOnRAM;
     }
 }
-

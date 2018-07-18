@@ -26,6 +26,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
@@ -49,6 +50,7 @@ import org.trinity.util.android.UIStringUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
+import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
@@ -59,10 +61,10 @@ import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
 import org.trinity.wallet.net.websocket.ACFounderBean;
 import org.trinity.wallet.net.websocket.ACFounderSignBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
-import org.trinity.wallet.net.websocket.BaseWebSocketBean;
-import org.trinity.wallet.net.websocket.MessageTypeFilterBean;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import butterknife.BindView;
@@ -228,13 +230,6 @@ public class MainActivity extends BaseActivity {
         instance = MainActivity.this;
         gson = WalletApplication.getGson();
 
-        // Init events of toolbar's menu button click action.
-        initToolbarMenu();
-        // Init events of cards' click action.
-        initCards();
-        // Init events of tabs' click action.
-        initTabs();
-
         // Identity verify.
         initUserIdentityVerify();
     }
@@ -323,7 +318,7 @@ public class MainActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                wApp.iAmNotFirstTime(password);
+                wApp.iAmNotFirstTime(wApp.getPasswordOnRAM(), password);
 
                 runOnUiThread(new Runnable() {
                     @Override
@@ -390,6 +385,13 @@ public class MainActivity extends BaseActivity {
     }
 
     private void endIdentityVerify() {
+        // Init events of toolbar's menu button click action.
+        initToolbarMenu();
+        // Init events of cards' click action.
+        initCards();
+        // Init events of tabs' click action.
+        initTabs();
+
         toolbar.setVisibility(View.VISIBLE);
         cardsShell.setVisibility(View.VISIBLE);
         tabsContainer.setVisibility(View.VISIBLE);
@@ -400,7 +402,8 @@ public class MainActivity extends BaseActivity {
         btnUserVerify.setClickable(true);
 
         // Load the wallet via user password.
-        wApp.load();
+        wApp.loadIdentity();
+
         // Init account data.
         postGetBalance();
     }
@@ -413,13 +416,13 @@ public class MainActivity extends BaseActivity {
             ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
             postGetBalance();
             // Save the wallet via user password.
-            wApp.save();
+            wApp.saveIdentity();
             return;
         }
         if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
             // Save the wallet via user password.
-            wApp.save();
+            wApp.saveIdentity();
             return;
         }
         if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
@@ -885,7 +888,15 @@ public class MainActivity extends BaseActivity {
                 }
         );
 
-        // TODO This is tab channel list.
+        // This is tab channel list.
+        List<ChannelBean> channelList = wApp.getChannelList();
+        if (channelList == null) {
+            addChannelView(null);
+        } else {
+            for (ChannelBean channelBean : channelList) {
+                addChannelView(channelBean);
+            }
+        }
 
         // TODO This is tab record.
 
@@ -1050,21 +1061,21 @@ public class MainActivity extends BaseActivity {
                 .url("ws://" + sTNAP_IpPort8766)
                 .build();
         new Thread(new Runnable() {
-            private boolean iAmSender = true;
-
-            private ACRegisterChannelBean req_1;
-            private ACFounderBean resp_2;
-            private ACFounderSignBean req_3;
-            private JSONRpcClient client_4;
-            private FunderTransactionBean resp_5;
-            private ACFounderBean req_6;
-            private ACFounderSignBean resp_7;
-            private JSONRpcClient client_8;
-            private SendrawtransactionBean resp_9;
-
             @Override
             public void run() {
                 webSocketClient.connect(new WebSocketListener() {
+                    private boolean iAmSender = true;
+
+                    private ACRegisterChannelBean req_1;
+                    private ACFounderBean resp_2;
+                    private ACFounderSignBean req_3;
+                    private JSONRpcClient client_4;
+                    private FunderTransactionBean resp_5;
+                    private ACFounderBean req_6;
+                    private ACFounderSignBean resp_7;
+                    private JSONRpcClient client_8;
+                    private SendrawtransactionBean resp_9;
+
                     @Override
                     public void onOpen(WebSocket webSocket, Response response) {
                         super.onOpen(webSocket, response);
@@ -1086,6 +1097,10 @@ public class MainActivity extends BaseActivity {
                         super.onMessage(webSocket, text);
 
                         String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
+
+                        if ("RegisterChannelFail".equals(messageTypeStr)) {
+                            iAmSender = false;
+                        }
 
                         if (iAmSender) {
                             if ("Founder".equals(messageTypeStr)) {
@@ -1140,7 +1155,7 @@ public class MainActivity extends BaseActivity {
                                                 }
                                             }
                                     );
-                                    webSocket.cancel();
+                                    webSocket.close(0, null);
                                     return;
                                 }
 
@@ -1186,47 +1201,63 @@ public class MainActivity extends BaseActivity {
                                                 }
                                             }
                                     );
-                                    webSocket.cancel();
+                                    webSocket.close(0, null);
                                     return;
                                 }
 
                                 resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
 
-                                if (resp_9.isResult()) {
-                                    runOnUiThread(
-                                            new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
-                                                }
-                                            }
-                                    );
-                                    webSocket.cancel();
+                                boolean channelChainResult = resp_9.isResult();
+                                if (channelChainResult) {
+                                    ChannelBean channelBean = new ChannelBean(resp_7.getChannelName(), sTNAPTrim, aliasTrim, resp_7.getMessageBody().getDeposit(), resp_7.getMessageBody().getAssetType(), "Clear");
+                                    addChannelItem(channelBean);
+                                    webSocket.close(0, null);
                                     return;
                                 }
 
-                                if (!resp_9.isResult()) {
+                                if (!channelChainResult) {
                                     iAmSender = false;
+                                    // TODO send FounderFail.
 
-                                    // TODO mirror add channel.
+                                    return;
                                 }
                             }
                             return;
                         }
 
                         if (!iAmSender) {
-                            if (text.contains("\"RegisterChannel\"")) {
+                            // TODO mirror add channel.
+
+                            if ("RegisterChannel".equals(messageTypeStr)) {
 
                             }
 
-                            if (text.contains("\"FounderSign\"")) {
+                            if ("FounderSign".equals(messageTypeStr)) {
 
                             }
 
-                            if (text.contains("\"Founder\"")) {
+                            if ("Founder".equals(messageTypeStr)) {
 
                             }
+
+                            if ("AddChannel".equals(messageTypeStr)) {
+
+                                webSocket.close(0, null);
+                            }
+
                         }
+                    }
+
+                    private void addChannelItem(final ChannelBean channelBean) {
+                        runOnUiThread(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        addChannelView(channelBean);
+                                        ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
+                                    }
+                                }
+                        );
                     }
 
                     @Override
@@ -1244,6 +1275,44 @@ public class MainActivity extends BaseActivity {
                 });
             }
         }, "MainActivity::attemptAddChannel").start();
+    }
+
+    private void addChannelView(@Nullable ChannelBean channelBean) {
+        List<ChannelBean> channelList = wApp.getChannelList();
+        if (channelBean == null && channelList == null) {
+            channelListEmpty.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        if (channelBean == null) {
+            return;
+        }
+
+        if (channelList == null) {
+            channelList = new ArrayList<>();
+        }
+
+        channelList.add(channelBean);
+        wApp.setChannelList(channelList);
+
+        View channelView = View.inflate(this, R.layout.tab_channel_list_item, null);
+        TextView channelName = channelView.findViewById(R.id.channelName);
+        TextView channelDeposit = channelView.findViewById(R.id.channelDeposit);
+        TextView channelBalance = channelView.findViewById(R.id.channelBalance);
+        TextView channelState = channelView.findViewById(R.id.channelState);
+        ImageButton channelClose = channelView.findViewById(R.id.channelClose);
+        channelName.setText(channelBean.getAlias());
+        channelDeposit.setText(getString(R.string.channel_deposit, BigDecimal.valueOf(channelBean.getDeposit()).toPlainString(), channelBean.getAssetName()));
+        channelBalance.setText(getString(R.string.channel_balance, BigDecimal.valueOf(channelBean.getBalance()).toPlainString(), channelBean.getAssetName()));
+        channelState.setText(getString(R.string.channel_state, channelBean.getState()));
+        channelClose.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                // TODO close channel.
+            }
+        });
+        channelContainer.addView(channelView);
+        channelListEmpty.setVisibility(View.GONE);
     }
 
     private void letTabsBeGone() {

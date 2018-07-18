@@ -32,6 +32,10 @@ public class JSONRpcClient extends AbstractClient {
         }
     }
 
+    public String getJson() {
+        return json;
+    }
+
     public String post() {
         RequestBody requestBody = RequestBody.create(MEDIA_TYPE, json);
         Request request = new Request.Builder()

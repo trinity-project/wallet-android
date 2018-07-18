@@ -23,24 +23,25 @@
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:gravity="left"
+        android:gravity="start"
         android:orientation="horizontal"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/recordChannelName">
 
         <TextView
+            android:id="@+id/recordPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight=".50"
-            android:text="%1$d %2$s %3$s" />
+            android:text="@string/record_price" />
 
         <TextView
+            android:id="@+id/recordFee"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight=".50"
-
-            android:text="Fee: %1$d %2$s" />
+            android:text="@string/record_fee" />
     </LinearLayout>
 
     <View

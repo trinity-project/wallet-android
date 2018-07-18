@@ -6,42 +6,54 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.securepreferences.SecurePreferences;
 
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.RecordBean;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import neoutils.Neoutils;
 import neoutils.Wallet;
 
 public final class WalletApplication extends Application {
+
     /**
      * The net url of neo.
      */
-    private static String net;
-    private static String netUrl;
-    private static String netUrlForNEO;
-    private static String magic;
+    private transient volatile static String net;
+    private transient volatile static String netUrl;
+    private transient volatile static String netUrlForNEO;
+    private transient volatile static String magic;
     private static WalletApplication instance;
     private static Gson gson = new Gson();
     private final String NOT_FIRST_TIME = "NOT_FIRST_TIME";
     /**
      * This is the NEO wallet model.
      */
-    private Wallet wallet;
-    private BigDecimal chainTNC;
-    private BigDecimal channelTNC;
-    private BigDecimal chainNEO;
-    private BigDecimal channelNEO;
-    private BigDecimal chainGAS;
-    private BigDecimal channelGAS;
-    private List<ChannelBean> channelList;
-    private List<RecordBean> recordList;
-    private boolean isIdentity;
-    private String passwordOnRAM;
+    private transient volatile boolean isIdentity;
+    private transient String passwordOnRAM;
+    private transient Wallet wallet;
+    private volatile BigDecimal chainTNC;
+    private volatile BigDecimal channelTNC;
+    private volatile BigDecimal chainNEO;
+    private volatile BigDecimal channelNEO;
+    private volatile BigDecimal chainGAS;
+    private volatile BigDecimal channelGAS;
+    /**
+     * Key: Net type. Value: Bean.
+     */
+    private transient volatile List<Map<String, ChannelBean>> channelList;
+    /**
+     * Key: Net type. Value: Bean.
+     */
+    private transient volatile List<Map<String, RecordBean>> recordList;
+
     private SharedPreferences identityVerifyPrefs;
 
     public static Gson getGson() {
@@ -68,13 +80,13 @@ public final class WalletApplication extends Application {
         return net;
     }
 
-    public boolean isFirstTime() {
+    public synchronized boolean isFirstTime() {
         SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
         String firstTimeUseString = first_time_use.getString(NOT_FIRST_TIME, null);
         return firstTimeUseString == null || !NOT_FIRST_TIME.equals(firstTimeUseString);
     }
 
-    public void iAmNotFirstTime(@Nullable String oldPassword, @NonNull String newPassword) {
+    public synchronized void iAmNotFirstTime(@Nullable String oldPassword, @NonNull String newPassword) {
         SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
         SharedPreferences.Editor editorFirstTimeUse = first_time_use.edit();
         editorFirstTimeUse.clear();
@@ -93,7 +105,7 @@ public final class WalletApplication extends Application {
         editorIdentityVerify.apply();
     }
 
-    public boolean isKeyFileOpen(String password) {
+    public synchronized boolean isKeyFileOpen(String password) {
         identityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
         String passwordInShare = identityVerifyPrefs.getString(ConfigList.USER_PASSWORD_KEY, null);
         if (passwordInShare != null && password.equals(passwordInShare)) {
@@ -104,7 +116,7 @@ public final class WalletApplication extends Application {
         }
     }
 
-    public void saveGlobal() {
+    public synchronized void saveGlobal() {
         SharedPreferences.Editor editor = identityVerifyPrefs.edit();
         editor.remove(ConfigList.SAVE_KEY);
         boolean isValidWIF = wallet != null && wallet.getWIF() != null && !"".equals(wallet.getWIF()) && wallet.getAddress() != null && !"".equals(wallet.getAddress());
@@ -115,7 +127,7 @@ public final class WalletApplication extends Application {
         editor.apply();
     }
 
-    public void loadGlobal() {
+    public synchronized void loadGlobal() {
         String secureWIF = identityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
         if (secureWIF == null || "".equals(secureWIF)) {
             wallet = null;
@@ -131,23 +143,33 @@ public final class WalletApplication extends Application {
         net = identityVerifyPrefs.getString(ConfigList.SAVE_NET, ConfigList.NET_TYPE_TEST);
     }
 
-    public void saveData() {
-        // TODO channel list record list
-        if (ConfigList.NET_TYPE_MAIN.equals(net)) {
-            return;
-        }
-        if (ConfigList.NET_TYPE_TEST.equals(net)) {
-            return;
-        }
+    public synchronized void saveData() {
+        SharedPreferences pref = new SecurePreferences(this.getBaseContext(), wallet.getWIF(), wallet.getAddress() + ".xml");
+        SharedPreferences.Editor editor = pref.edit();
+        editor.remove(ConfigList.SAVE_CHANNEL_LIST);
+        editor.remove(ConfigList.SAVE_RECORD_LIST);
+        editor.putString(ConfigList.SAVE_CHANNEL_LIST, gson.toJson(channelList));
+        editor.putString(ConfigList.SAVE_RECORD_LIST, gson.toJson(recordList));
+        editor.apply();
     }
 
-    public void loadData() {
-        // TODO channel list record list
-        if (ConfigList.NET_TYPE_MAIN.equals(net)) {
-            return;
+    public synchronized void loadData() {
+        SharedPreferences pref = new SecurePreferences(this.getBaseContext(), wallet.getWIF(), wallet.getAddress() + ".xml");
+        String channelListJson = pref.getString(ConfigList.SAVE_CHANNEL_LIST, null);
+        String recordListJson = pref.getString(ConfigList.SAVE_RECORD_LIST, null);
+        if (channelListJson == null) {
+            channelList = null;
+        } else {
+            class ChannelListTypeToken extends TypeToken<ArrayList<HashMap<String, ChannelBean>>> {
+            }
+            channelList = gson.fromJson(channelListJson, new ChannelListTypeToken().getType());
         }
-        if (ConfigList.NET_TYPE_TEST.equals(net)) {
-            return;
+        if (recordListJson == null) {
+            recordList = null;
+        } else {
+            class RecordListTypeToken extends TypeToken<ArrayList<HashMap<String, RecordBean>>> {
+            }
+            recordList = gson.fromJson(recordListJson, new RecordListTypeToken().getType());
         }
     }
 
@@ -157,7 +179,7 @@ public final class WalletApplication extends Application {
         instance = this;
     }
 
-    public void logOut() {
+    public synchronized void logOut() {
         clearBalance();
         channelList = null;
         recordList = null;
@@ -172,7 +194,7 @@ public final class WalletApplication extends Application {
         channelGAS = null;
     }
 
-    public void switchNet(String netType) {
+    public synchronized void switchNet(String netType) {
         if (ConfigList.NET_TYPE_MAIN.equals(netType)) {
             net = netType;
             netUrl = ConfigList.MAIN_NET_URL;
@@ -251,21 +273,19 @@ public final class WalletApplication extends Application {
         this.channelGAS = channelGAS;
     }
 
-    public List<ChannelBean> getChannelList() {
+    public List<Map<String, ChannelBean>> getChannelList() {
         return channelList;
     }
 
-    public void setChannelList(List<ChannelBean> channelList) {
-        saveGlobal();
+    public void setChannelList(List<Map<String, ChannelBean>> channelList) {
         this.channelList = channelList;
     }
 
-    public List<RecordBean> getRecordList() {
+    public List<Map<String, RecordBean>> getRecordList() {
         return recordList;
     }
 
-    public void setRecordList(List<RecordBean> recordList) {
-        saveGlobal();
+    public void setRecordList(List<Map<String, RecordBean>> recordList) {
         this.recordList = recordList;
     }
 

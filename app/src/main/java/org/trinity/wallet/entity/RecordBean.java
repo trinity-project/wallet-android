@@ -3,14 +3,24 @@ package org.trinity.wallet.entity;
 import android.support.annotation.NonNull;
 
 public class RecordBean {
+    private ChannelBean channelBean;
     private String channel_alias;
     private double price;
     private double fee;
 
-    public RecordBean(@NonNull ChannelBean channel, double price, double fee) {
-        this.channel_alias = channel.getAlias();
+    public RecordBean(@NonNull ChannelBean channelBean, double price, double fee) {
+        this.channelBean = channelBean;
+        this.channel_alias = channelBean.getAlias();
         this.price = price;
         this.fee = fee;
+    }
+
+    public ChannelBean getChannelBean() {
+        return channelBean;
+    }
+
+    public void setChannelBean(ChannelBean channelBean) {
+        this.channelBean = channelBean;
     }
 
     public String getChannel_alias() {

@@ -64,8 +64,11 @@ import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -484,6 +487,38 @@ public class MainActivity extends BaseActivity {
                                       wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
                                       wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
 
+                                      List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+                                      if (channelList != null) {
+                                          double chainTNC = 0;
+                                          double chainNEO = 0;
+                                          double chainGAS = 0;
+                                          String net = wApp.getNet();
+                                          String assetName;
+                                          ChannelBean channelBean;
+                                          for (Map<String, ChannelBean> channelBeanWithType : channelList) {
+                                              Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                                              if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                                                  channelBean = channelBeanWithType.get(net);
+                                                  assetName = channelBean.getAssetName();
+                                                  switch (assetName) {
+                                                      case ConfigList.ASSET_ID_MAP_KEY_TNC:
+                                                          chainTNC += channelBean.getBalance();
+                                                          break;
+                                                      case ConfigList.ASSET_ID_MAP_KEY_NEO:
+                                                          chainNEO += channelBean.getBalance();
+                                                          break;
+                                                      case ConfigList.ASSET_ID_MAP_KEY_GAS:
+                                                          chainGAS += channelBean.getBalance();
+                                                          break;
+                                                  }
+                                              }
+                                          }
+
+                                          wApp.setChannelTNC(BigDecimal.valueOf(chainTNC));
+                                          wApp.setChannelNEO(BigDecimal.valueOf(chainNEO));
+                                          wApp.setChannelGAS(BigDecimal.valueOf(chainGAS));
+                                      }
+
                                       refreshCardUI();
                                   }
                               }
@@ -743,12 +778,10 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        final boolean isPaymentCode = false;
+        final boolean payCodeSuccess = false;
         // TODO Do something to know it is a payment code.
 
-        if (isPaymentCode) {
-            // TODO Gateway trade.
-        } else {
+        if (!payCodeSuccess) {
             // All invalid.
 
             // Invalid text error.
@@ -890,14 +923,7 @@ public class MainActivity extends BaseActivity {
         );
 
         // This is tab channel list.
-        List<ChannelBean> channelList = wApp.getChannelList();
-        if (channelList == null) {
-            addChannelView(null);
-        } else {
-            for (ChannelBean channelBean : channelList) {
-                addChannelView(channelBean);
-            }
-        }
+        refreshChannelListUI();
 
         // TODO This is tab record.
 
@@ -905,7 +931,7 @@ public class MainActivity extends BaseActivity {
         tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-                letTabsBeGone();
+                letTabsBecomeGone();
                 switch (menuItem.getItemId()) {
                     case R.id.navigationTransfer:
                         tabTransfer.setVisibility(View.VISIBLE);
@@ -925,6 +951,23 @@ public class MainActivity extends BaseActivity {
         });
 
         tabTransfer.setVisibility(View.VISIBLE);
+    }
+
+    private void refreshChannelListUI() {
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        if (channelList == null) {
+            addChannelView(wApp.getNet(), null);
+        } else {
+            String net = wApp.getNet();
+            ChannelBean channelBean;
+            for (Map<String, ChannelBean> channelBeanWithType : channelList) {
+                Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                    channelBean = channelBeanWithType.get(net);
+                    addChannelView(net, channelBean);
+                }
+            }
+        }
     }
 
     private void attemptAddChannel() {
@@ -1100,165 +1143,147 @@ public class MainActivity extends BaseActivity {
                         String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
 
                         if ("RegisterChannelFail".equals(messageTypeStr)) {
-                            iAmSender = false;
-                        }
-
-                        if (iAmSender) {
-                            if ("Founder".equals(messageTypeStr)) {
-                                resp_2 = gson.fromJson(text, ACFounderBean.class);
-                                req_3 = new ACFounderSignBean();
-                                req_3.setSender(sTNAP8766);
-                                req_3.setReceiver(sTNAPTrim);
-                                req_3.setChannelName(resp_2.getChannelName());
-                                req_3.setTxNonce(resp_2.getTxNonce());
-                                ACFounderSignBean.MessageBodyBean messageBody3 = new ACFounderSignBean.MessageBodyBean();
-                                ACFounderSignBean.MessageBodyBean.FounderBean founder3 = new ACFounderSignBean.MessageBodyBean.FounderBean();
-                                founder3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getFounder().getTxData(), wallet.getPrivateKey()));
-                                founder3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getFounder()), ACFounderSignBean.MessageBodyBean.FounderBean.OriginalDataBean.class));
-                                messageBody3.setFounder(founder3);
-                                ACFounderSignBean.MessageBodyBean.CommitmentBean commitment3 = new ACFounderSignBean.MessageBodyBean.CommitmentBean();
-                                commitment3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
-                                commitment3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getCommitment()), ACFounderSignBean.MessageBodyBean.CommitmentBean.OriginalDataBeanX.class));
-                                messageBody3.setCommitment(commitment3);
-                                ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery3 = new ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean();
-                                revocableDelivery3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
-                                revocableDelivery3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getRevocableDelivery()), ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanXX.class));
-                                messageBody3.setRevocableDelivery(revocableDelivery3);
-                                messageBody3.setAssetType(resp_2.getMessageBody().getAssetType());
-                                messageBody3.setDeposit(resp_2.getMessageBody().getDeposit());
-                                messageBody3.setRoleIndex(resp_2.getMessageBody().getRoleIndex());
-                                req_3.setMessageBody(messageBody3);
-                                String send3 = gson.toJson(req_3);
-                                webSocket.send(send3);
-
-                                client_4 = new JSONRpcClient.Builder()
-                                        .net(WalletApplication.getNetUrl())
-                                        .method("FunderTransaction")
-                                        .params(publicKeyHex,
-                                                sTNAP_PublicKey,
-                                                resp_2.getMessageBody().getFounder().getAddressFunding(),
-                                                resp_2.getMessageBody().getFounder().getScriptFunding(),
-                                                String.valueOf(resp_2.getMessageBody().getDeposit()),
-                                                String.valueOf(resp_2.getMessageBody().getDeposit()),
-                                                resp_2.getMessageBody().getFounder().getTxId(),
-                                                ConfigList.ASSET_ID_MAP.get(resp_2.getMessageBody().getAssetType().trim().toUpperCase()))
-                                        .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
-                                        .build();
-
-                                String json_5 = client_4.post();
-
-                                if (json_5 == null) {
-                                    runOnUiThread(
-                                            new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                                }
-                                            }
-                                    );
-                                    webSocket.close(0, null);
-                                    return;
-                                }
-
-                                resp_5 = gson.fromJson(json_5, FunderTransactionBean.class);
-
-                                req_6 = new ACFounderBean();
-                                req_6.setChannelName(resp_2.getChannelName());
-                                req_6.setSender(sTNAP8766);
-                                req_6.setReceiver(sTNAPTrim);
-                                req_6.setTxNonce(resp_2.getTxNonce());
-                                ACFounderBean.MessageBodyBean messageBody4 = new ACFounderBean.MessageBodyBean();
-                                messageBody4.setAssetType(resp_2.getMessageBody().getAssetType());
-                                messageBody4.setDeposit(resp_2.getMessageBody().getDeposit());
-                                messageBody4.setRoleIndex(resp_2.getMessageBody().getRoleIndex() + 1);
-                                messageBody4.setFounder(resp_2.getMessageBody().getFounder());
-                                messageBody4.setCommitment(gson.fromJson(gson.toJson(resp_5.getResult().getC_TX()), ACFounderBean.MessageBodyBean.CommitmentBean.class));
-                                messageBody4.setRevocableDelivery(gson.fromJson(gson.toJson(resp_5.getResult().getR_TX()), ACFounderBean.MessageBodyBean.RevocableDeliveryBean.class));
-                                req_6.setMessageBody(messageBody4);
-
-                                String send6 = gson.toJson(req_6);
-                                webSocket.send(send6);
-
-                                return;
-                            }
-
-                            if ("FounderSign".equals(messageTypeStr)) {
-                                resp_7 = gson.fromJson(text, ACFounderSignBean.class);
-                                client_8 = new JSONRpcClient.Builder()
-                                        .net(WalletApplication.getNetUrlForNEO())
-                                        .method("sendrawtransaction")
-                                        .params(resp_7.getMessageBody().getFounder().getOriginalData().getTxData() + resp_7.getMessageBody().getFounder().getOriginalData().getWitness().replace("{signOther}", resp_7.getMessageBody().getFounder().getTxDataSign()).replace("{signSelf}", req_3.getMessageBody().getFounder().getTxDataSign()))
-                                        .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
-                                        .build();
-
-                                String json_9 = client_8.post();
-
-                                if (json_9 == null) {
-                                    runOnUiThread(
-                                            new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                                }
-                                            }
-                                    );
-                                    webSocket.close(0, null);
-                                    return;
-                                }
-
-                                resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
-
-                                boolean channelChainResult = resp_9.isResult();
-                                if (channelChainResult) {
-                                    ChannelBean channelBean = new ChannelBean(resp_7.getChannelName(), sTNAPTrim, aliasTrim, resp_7.getMessageBody().getDeposit(), resp_7.getMessageBody().getAssetType(), "Clear");
-                                    addChannelItem(channelBean);
-                                    webSocket.close(0, null);
-                                    return;
-                                }
-
-                                if (!channelChainResult) {
-                                    iAmSender = false;
-                                    // TODO send FounderFail.
-
-                                    return;
-                                }
-                            }
+                            webSocket.cancel();
                             return;
                         }
 
-                        if (!iAmSender) {
-                            // TODO mirror add channel.
+                        if ("FounderFail".equals(messageTypeStr)) {
+                            webSocket.cancel();
+                            return;
+                        }
 
-                            if ("RegisterChannel".equals(messageTypeStr)) {
+                        if ("Founder".equals(messageTypeStr)) {
+                            resp_2 = gson.fromJson(text, ACFounderBean.class);
+                            req_3 = new ACFounderSignBean();
+                            req_3.setSender(sTNAP8766);
+                            req_3.setReceiver(sTNAPTrim);
+                            req_3.setChannelName(resp_2.getChannelName());
+                            req_3.setTxNonce(resp_2.getTxNonce());
+                            ACFounderSignBean.MessageBodyBean messageBody3 = new ACFounderSignBean.MessageBodyBean();
+                            ACFounderSignBean.MessageBodyBean.FounderBean founder3 = new ACFounderSignBean.MessageBodyBean.FounderBean();
+                            founder3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getFounder().getTxData(), wallet.getPrivateKey()));
+                            founder3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getFounder()), ACFounderSignBean.MessageBodyBean.FounderBean.OriginalDataBean.class));
+                            messageBody3.setFounder(founder3);
+                            ACFounderSignBean.MessageBodyBean.CommitmentBean commitment3 = new ACFounderSignBean.MessageBodyBean.CommitmentBean();
+                            commitment3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
+                            commitment3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getCommitment()), ACFounderSignBean.MessageBodyBean.CommitmentBean.OriginalDataBeanX.class));
+                            messageBody3.setCommitment(commitment3);
+                            ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery3 = new ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean();
+                            revocableDelivery3.setTxDataSign(NeoSignUtil.signToHex(resp_2.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
+                            revocableDelivery3.setOriginalData(gson.fromJson(gson.toJson(resp_2.getMessageBody().getRevocableDelivery()), ACFounderSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanXX.class));
+                            messageBody3.setRevocableDelivery(revocableDelivery3);
+                            messageBody3.setAssetType(resp_2.getMessageBody().getAssetType());
+                            messageBody3.setDeposit(resp_2.getMessageBody().getDeposit());
+                            messageBody3.setRoleIndex(resp_2.getMessageBody().getRoleIndex());
+                            req_3.setMessageBody(messageBody3);
+                            String send3 = gson.toJson(req_3);
+                            webSocket.send(send3);
 
+                            client_4 = new JSONRpcClient.Builder()
+                                    .net(WalletApplication.getNetUrl())
+                                    .method("FunderTransaction")
+                                    .params(publicKeyHex,
+                                            sTNAP_PublicKey,
+                                            resp_2.getMessageBody().getFounder().getAddressFunding(),
+                                            resp_2.getMessageBody().getFounder().getScriptFunding(),
+                                            String.valueOf(resp_2.getMessageBody().getDeposit()),
+                                            String.valueOf(resp_2.getMessageBody().getDeposit()),
+                                            resp_2.getMessageBody().getFounder().getTxId(),
+                                            ConfigList.ASSET_ID_MAP.get(resp_2.getMessageBody().getAssetType().trim().toUpperCase()))
+                                    .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
+                                    .build();
+
+                            String json_5 = client_4.post();
+
+                            if (json_5 == null) {
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                            }
+                                        }
+                                );
+                                webSocket.close(0, null);
+                                return;
                             }
 
-                            if ("FounderSign".equals(messageTypeStr)) {
+                            resp_5 = gson.fromJson(json_5, FunderTransactionBean.class);
 
+                            req_6 = new ACFounderBean();
+                            req_6.setChannelName(resp_2.getChannelName());
+                            req_6.setSender(sTNAP8766);
+                            req_6.setReceiver(sTNAPTrim);
+                            req_6.setTxNonce(resp_2.getTxNonce());
+                            ACFounderBean.MessageBodyBean messageBody4 = new ACFounderBean.MessageBodyBean();
+                            messageBody4.setAssetType(resp_2.getMessageBody().getAssetType());
+                            messageBody4.setDeposit(resp_2.getMessageBody().getDeposit());
+                            messageBody4.setRoleIndex(resp_2.getMessageBody().getRoleIndex() + 1);
+                            messageBody4.setFounder(resp_2.getMessageBody().getFounder());
+                            messageBody4.setCommitment(gson.fromJson(gson.toJson(resp_5.getResult().getC_TX()), ACFounderBean.MessageBodyBean.CommitmentBean.class));
+                            messageBody4.setRevocableDelivery(gson.fromJson(gson.toJson(resp_5.getResult().getR_TX()), ACFounderBean.MessageBodyBean.RevocableDeliveryBean.class));
+                            req_6.setMessageBody(messageBody4);
+
+                            String send6 = gson.toJson(req_6);
+                            webSocket.send(send6);
+
+                            return;
+                        }
+
+                        if ("FounderSign".equals(messageTypeStr)) {
+                            resp_7 = gson.fromJson(text, ACFounderSignBean.class);
+                            client_8 = new JSONRpcClient.Builder()
+                                    .net(WalletApplication.getNetUrlForNEO())
+                                    .method("sendrawtransaction")
+                                    .params(resp_7.getMessageBody().getFounder().getOriginalData().getTxData() + resp_7.getMessageBody().getFounder().getOriginalData().getWitness().replace("{signOther}", resp_7.getMessageBody().getFounder().getTxDataSign()).replace("{signSelf}", req_3.getMessageBody().getFounder().getTxDataSign()))
+                                    .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
+                                    .build();
+
+                            String json_9 = client_8.post();
+
+                            if (json_9 == null) {
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                            }
+                                        }
+                                );
+                                webSocket.close(0, null);
+                                return;
                             }
 
-                            if ("Founder".equals(messageTypeStr)) {
+                            resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
 
-                            }
+                            boolean addChannelResult = resp_9.isResult();
 
-                            if ("AddChannel".equals(messageTypeStr)) {
+                            if (addChannelResult) {
+                                final ChannelBean channelBean = new ChannelBean(
+                                        resp_7.getChannelName(),
+                                        sTNAPTrim, resp_7.getTxNonce(),
+                                        aliasTrim, resp_7.getMessageBody().getDeposit(),
+                                        resp_7.getMessageBody().getAssetType(),
+                                        ConfigList.CHANNEL_STATUS_CLEAR);
+
+                                runOnUiThread(
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                addChannelView(wApp.getNet(), channelBean);
+                                                ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
+                                            }
+                                        }
+                                );
 
                                 webSocket.close(0, null);
+                                return;
                             }
 
+                            if (!addChannelResult) {
+                                webSocket.cancel();
+                            }
                         }
-                    }
-
-                    private void addChannelItem(final ChannelBean channelBean) {
-                        runOnUiThread(
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        addChannelView(channelBean);
-                                        ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
-                                    }
-                                }
-                        );
                     }
 
                     @Override
@@ -1278,14 +1303,25 @@ public class MainActivity extends BaseActivity {
         }, "MainActivity::attemptAddChannel").start();
     }
 
-    private void addChannelView(@Nullable ChannelBean channelBean) {
-        List<ChannelBean> channelList = wApp.getChannelList();
-        if (channelBean == null && channelList == null) {
-            channelListEmpty.setVisibility(View.VISIBLE);
-            return;
-        }
+    private void addChannelView(@NonNull String net, @Nullable ChannelBean channelBean) {
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
 
         if (channelBean == null) {
+            if (channelList == null) {
+                channelListEmpty.setVisibility(View.VISIBLE);
+                return;
+            }
+            int channelCurrentNetCount = 0;
+            for (Map<String, ChannelBean> channelListWithType : channelList) {
+                Iterator<String> typeIterator = channelListWithType.keySet().iterator();
+                if (typeIterator.hasNext() && wApp.getNet().equals(typeIterator.next())) {
+                    channelCurrentNetCount++;
+                }
+            }
+            if (channelCurrentNetCount == 0) {
+                channelListEmpty.setVisibility(View.VISIBLE);
+                return;
+            }
             return;
         }
 
@@ -1293,8 +1329,14 @@ public class MainActivity extends BaseActivity {
             channelList = new ArrayList<>();
         }
 
-        channelList.add(channelBean);
+        HashMap<String, ChannelBean> channelBeanWithType = new HashMap<>();
+        channelBeanWithType.put(net, channelBean);
+        channelList.add(channelBeanWithType);
         wApp.setChannelList(channelList);
+
+        if (!net.equals(wApp.getNet())) {
+            return;
+        }
 
         View channelView = View.inflate(this, R.layout.tab_channel_list_item, null);
         TextView channelName = channelView.findViewById(R.id.channelName);
@@ -1316,7 +1358,7 @@ public class MainActivity extends BaseActivity {
         channelListEmpty.setVisibility(View.GONE);
     }
 
-    private void letTabsBeGone() {
+    private void letTabsBecomeGone() {
         tabTransfer.setVisibility(View.GONE);
         tabAddChannel.setVisibility(View.GONE);
         tabChannelList.setVisibility(View.GONE);

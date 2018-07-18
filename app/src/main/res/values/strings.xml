@@ -31,9 +31,8 @@
     <string name="transfer_btn">Transfer</string>
     <string name="add_btn">Add</string>
     <string name="btn_channel_close">btnChannelClose</string>
-    <string name="title_activity_signin">Sign in</string>
+    <string name="title_activity_sign_in">Sign in</string>
 
-    <!-- Strings related to login -->
     <string name="btn_sign_in">SIGN IN</string>
     <string name="error_invalid_private_key">Invalid private key.</string>
     <string name="main_menu_account">Account</string>
@@ -55,4 +54,6 @@
     <string name="channel_deposit">Deposit: %1$s %2$s</string>
     <string name="channel_balance">Balance: %1$s %2$s</string>
     <string name="channel_state">State: %1$s</string>
+    <string name="net_state">%1$s NET</string>
+
 </resources>

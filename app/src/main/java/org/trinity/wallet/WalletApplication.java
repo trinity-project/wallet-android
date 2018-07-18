@@ -64,6 +64,10 @@ public final class WalletApplication extends Application {
         return magic;
     }
 
+    public String getNet() {
+        return net;
+    }
+
     public boolean isFirstTime() {
         SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
         String firstTimeUseString = first_time_use.getString(NOT_FIRST_TIME, null);
@@ -100,32 +104,31 @@ public final class WalletApplication extends Application {
         }
     }
 
-    public void saveIdentity() {
+    public void saveGlobal() {
         SharedPreferences.Editor editor = identityVerifyPrefs.edit();
         editor.remove(ConfigList.SAVE_KEY);
         boolean isValidWIF = wallet != null && wallet.getWIF() != null && !"".equals(wallet.getWIF()) && wallet.getAddress() != null && !"".equals(wallet.getAddress());
         if (isValidWIF) {
             editor.putString(ConfigList.SAVE_KEY, wallet.getWIF());
         }
+        editor.putString(ConfigList.SAVE_NET, net);
         editor.apply();
     }
 
-    public void loadIdentity() {
+    public void loadGlobal() {
         String secureWIF = identityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
         if (secureWIF == null || "".equals(secureWIF)) {
-            return;
+            wallet = null;
+        } else {
+            Wallet walletFromWIF = null;
+            try {
+                walletFromWIF = Neoutils.generateFromWIF(secureWIF);
+            } catch (Exception ignored) {
+                this.wallet = null;
+            }
+            this.wallet = walletFromWIF;
         }
-        Wallet wifGenWallet;
-        try {
-            wifGenWallet = Neoutils.generateFromWIF(secureWIF);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
-        if (wifGenWallet == null || wifGenWallet.getAddress() == null || "".equals(wifGenWallet.getAddress())) {
-            return;
-        }
-        wallet = wifGenWallet;
+        net = identityVerifyPrefs.getString(ConfigList.SAVE_NET, ConfigList.NET_TYPE_TEST);
     }
 
     public void saveData() {
@@ -152,9 +155,6 @@ public final class WalletApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
-        // TODO save net state
-//        switchNet(net);
-        switchNet(ConfigList.NET_TYPE_MAIN);
     }
 
     public void logOut() {
@@ -179,6 +179,7 @@ public final class WalletApplication extends Application {
             netUrlForNEO = ConfigList.MAIN_NET_URL_FOR_NEO;
             magic = ConfigList.MAIN_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_MAIN);
+            saveGlobal();
             loadData();
             return;
         }
@@ -188,6 +189,7 @@ public final class WalletApplication extends Application {
             netUrlForNEO = ConfigList.TEST_NET_URL_FOR_NEO;
             magic = ConfigList.TEST_NET_MAGIC;
             ConfigList.ASSET_ID_MAP.put(ConfigList.ASSET_ID_MAP_KEY_TNC, ConfigList.ASSET_ID_TNC_TEST);
+            saveGlobal();
             loadData();
             return;
         }
@@ -254,7 +256,7 @@ public final class WalletApplication extends Application {
     }
 
     public void setChannelList(List<ChannelBean> channelList) {
-        saveIdentity();
+        saveGlobal();
         this.channelList = channelList;
     }
 
@@ -263,7 +265,7 @@ public final class WalletApplication extends Application {
     }
 
     public void setRecordList(List<RecordBean> recordList) {
-        saveIdentity();
+        saveGlobal();
         this.recordList = recordList;
     }
 

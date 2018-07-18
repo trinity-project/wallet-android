@@ -368,7 +368,6 @@ public class MainActivity extends BaseActivity {
 
                         wApp.setPasswordOnRAM(password);
                         inputUserVerify.setText(null);
-                        ToastUtil.show(getBaseContext(), "Switched to main net.");
 
                         endIdentityVerify();
                     }
@@ -402,7 +401,9 @@ public class MainActivity extends BaseActivity {
         btnUserVerify.setClickable(true);
 
         // Load the wallet via user password.
-        wApp.loadIdentity();
+        wApp.loadGlobal();
+        wApp.switchNet(wApp.getNet());
+        netState.setText(getString(R.string.net_state, wApp.getNet().toUpperCase()));
 
         // Init account data.
         postGetBalance();
@@ -416,13 +417,13 @@ public class MainActivity extends BaseActivity {
             ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
             postGetBalance();
             // Save the wallet via user password.
-            wApp.saveIdentity();
+            wApp.saveGlobal();
             return;
         }
         if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
             // Save the wallet via user password.
-            wApp.saveIdentity();
+            wApp.saveGlobal();
             return;
         }
         if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {

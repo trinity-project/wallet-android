@@ -29,6 +29,7 @@ public final class ConfigList {
     public static final String NET_TYPE_MAIN = "MAIN";
     public static final String NET_TYPE_TEST = "TEST";
     public static final String SAVE_KEY = "WIF";
+    public static final String SAVE_NET = "NET";
     public static final String USER_PASSWORD_KEY = "PASSWORD";
     public static final int USER_PASSWORD_MIN = 8;
     public static final int USER_PASSWORD_MAX = 16;

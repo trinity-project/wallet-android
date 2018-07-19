@@ -36,7 +36,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/activity_vertical_margin"
-                android:text="There is no transfer record here."
+                android:text="No payment code record yet."
                 android:textAlignment="center"
                 android:textColor="@color/colorListBlue"
                 android:textSize="16sp" />

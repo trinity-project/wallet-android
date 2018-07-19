@@ -237,6 +237,42 @@ public class MainActivity extends BaseActivity {
         initUserIdentityVerify();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == ConfigList.SIGN_IN_RESULT) {
+            refreshCardUI();
+            ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
+            postGetBalance();
+            return;
+        }
+        if (resultCode == ConfigList.SIGN_OUT_RESULT) {
+            refreshCardUI();
+            return;
+        }
+        if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
+            initUserIdentityVerify(true);
+            return;
+        }
+//        if (resultCode == ConfigList.SCAN_RESULT) {
+        IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (intentResult != null) {
+            if (intentResult.getContents() == null) {
+                ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
+            } else {
+                String scanResult = intentResult.getContents();
+                inputTransferTo.setText(scanResult);
+                verifyAddress(false);
+            }
+            return;
+        }
+//            return;
+//        }
+        postGetBalance();
+    }
+
+    /* ---------------------------------- INIT METHODS ---------------------------------- */
+
     private void initUserIdentityVerify() {
         initUserIdentityVerify(wApp.isFirstTime());
     }
@@ -246,7 +282,7 @@ public class MainActivity extends BaseActivity {
         cardsShell.setVisibility(View.GONE);
         tabsContainer.setVisibility(View.GONE);
         tab.setVisibility(View.GONE);
-        wApp.setIsIdentity(false);
+        wApp.setIdentity(false);
         userVerify.setVisibility(View.VISIBLE);
 
         titleUserVerify.requestFocus();
@@ -254,12 +290,22 @@ public class MainActivity extends BaseActivity {
             titleUserVerify.setText("IDENTITY CONFIRM");
             infoUserVerify.setText("Please set a new password for identity verify. (It is NOT your private key.)");
             layUserVerifySure.setVisibility(View.VISIBLE);
+            inputUserVerifySure.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                @Override
+                public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                    if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                        userIdentityCreate(inputUserVerify, inputUserVerifySure);
+                        return true;
+                    }
+                    return false;
+                }
+            });
             btnUserVerify.setText(R.string.confirm);
             btnUserVerify.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                     if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                        userIdentitySet(inputUserVerify, inputUserVerifySure);
+                        userIdentityCreate(inputUserVerify, inputUserVerifySure);
                         return true;
                     }
                     return false;
@@ -268,13 +314,23 @@ public class MainActivity extends BaseActivity {
             btnUserVerify.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    userIdentitySet(inputUserVerify, inputUserVerifySure);
+                    userIdentityCreate(inputUserVerify, inputUserVerifySure);
                 }
             });
         } else {
             titleUserVerify.setText("IDENTITY VERIFICATION");
             infoUserVerify.setText("Please input your password for identity verify. (It is NOT your private key.)");
             layUserVerifySure.setVisibility(View.GONE);
+            inputUserVerify.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                @Override
+                public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                    if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                        userIdentityVerify(inputUserVerify);
+                        return true;
+                    }
+                    return false;
+                }
+            });
             btnUserVerify.setText(R.string.verify);
             btnUserVerify.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
@@ -295,24 +351,24 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private void userIdentitySet(final EditText inputUserVerify, final EditText inputUserVerifySure) {
+    private void userIdentityCreate(final EditText inputUserVerify, final EditText inputUserVerifySure) {
         btnUserVerify.setClickable(false);
         verifyIdentityHideIME();
 
         inputUserVerify.setError(null);
         inputUserVerifySure.setError(null);
-        final String password = inputUserVerify.getText().toString();
+        final String newPassword = inputUserVerify.getText().toString();
         String passwordSure = inputUserVerifySure.getText().toString();
-        int inLen = password.length();
+        int inLen = newPassword.length();
 
         if (ConfigList.USER_PASSWORD_MIN > inLen || inLen > ConfigList.USER_PASSWORD_MAX) {
-            wApp.setIsIdentity(false);
+            wApp.setIdentity(false);
             inputUserVerify.setError("Invalid input.");
             inputUserVerify.requestFocus();
             btnUserVerify.setClickable(true);
             return;
         }
-        if (!password.equals(passwordSure)) {
+        if (!newPassword.equals(passwordSure)) {
             inputUserVerifySure.setError("Inconsistent.");
             inputUserVerifySure.requestFocus();
             btnUserVerify.setClickable(true);
@@ -321,14 +377,12 @@ public class MainActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                wApp.iAmNotFirstTime(wApp.getPasswordOnRAM(), password);
+                wApp.iAmNotFirstTime(newPassword);
 
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        wApp.setPasswordOnRAM(password);
                         initUserIdentityVerify(false);
-
                         inputUserVerify.setText(null);
                         inputUserVerifySure.setText(null);
                         ToastUtil.show(getBaseContext(), "New password effective immediately.");
@@ -347,7 +401,7 @@ public class MainActivity extends BaseActivity {
         final String password = inputUserVerify.getText().toString();
         int inLen = password.length();
         if (ConfigList.USER_PASSWORD_MIN > inLen || inLen > ConfigList.USER_PASSWORD_MAX) {
-            wApp.setIsIdentity(false);
+            wApp.setIdentity(false);
             inputUserVerify.setError("Invalid input.");
             inputUserVerify.requestFocus();
             btnUserVerify.setClickable(true);
@@ -362,14 +416,13 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (!isKeyFileOpen) {
-                            wApp.setIsIdentity(false);
+                            wApp.setIdentity(false);
                             inputUserVerify.setError("Verification failure. Please make sure and try again.");
                             inputUserVerify.requestFocus();
                             btnUserVerify.setClickable(true);
                             return;
                         }
 
-                        wApp.setPasswordOnRAM(password);
                         inputUserVerify.setText(null);
 
                         endIdentityVerify();
@@ -398,7 +451,7 @@ public class MainActivity extends BaseActivity {
         cardsShell.setVisibility(View.VISIBLE);
         tabsContainer.setVisibility(View.VISIBLE);
         tab.setVisibility(View.VISIBLE);
-        wApp.setIsIdentity(true);
+        wApp.setIdentity(true);
 
         userVerify.setVisibility(View.GONE);
         btnUserVerify.setClickable(true);
@@ -410,140 +463,6 @@ public class MainActivity extends BaseActivity {
 
         // Init account data.
         postGetBalance();
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == ConfigList.SIGN_IN_RESULT) {
-            refreshCardUI();
-            ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
-            postGetBalance();
-            // Save the wallet via user password.
-            wApp.saveGlobal();
-            return;
-        }
-        if (resultCode == ConfigList.SIGN_OUT_RESULT) {
-            refreshCardUI();
-            // Save the wallet via user password.
-            wApp.saveGlobal();
-            return;
-        }
-        if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
-            initUserIdentityVerify(true);
-            return;
-        }
-//        if (resultCode == ConfigList.SCAN_RESULT) {
-        IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (intentResult != null) {
-            if (intentResult.getContents() == null) {
-                ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
-            } else {
-                String scanResult = intentResult.getContents();
-                inputTransferTo.setText(scanResult);
-                verifyAddress(false);
-            }
-            return;
-        }
-//            return;
-//        }
-        postGetBalance();
-    }
-
-    private synchronized void postGetBalance() {
-        // TODO on channel value.
-
-        final Wallet wallet = wApp.getWallet();
-
-        if (wallet == null) {
-            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
-            return;
-        }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-
-                JSONRpcClient client = new JSONRpcClient.Builder()
-                        .net(WalletApplication.getNetUrl())
-                        .method("getBalance")
-                        .params(wallet.getAddress())
-                        .id("1")
-                        .build();
-
-                final String response = client.post();
-
-                runOnUiThread(new Runnable() {
-                                  @Override
-                                  public void run() {
-                                      if (response == null) {
-                                          ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                          return;
-                                      }
-
-                                      GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
-
-                                      wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
-                                      wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
-                                      wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
-
-                                      List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-                                      if (channelList != null) {
-                                          double chainTNC = 0;
-                                          double chainNEO = 0;
-                                          double chainGAS = 0;
-                                          String net = wApp.getNet();
-                                          String assetName;
-                                          ChannelBean channelBean;
-                                          for (Map<String, ChannelBean> channelBeanWithType : channelList) {
-                                              Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
-                                              if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
-                                                  channelBean = channelBeanWithType.get(net);
-                                                  assetName = channelBean.getAssetName();
-                                                  switch (assetName) {
-                                                      case ConfigList.ASSET_ID_MAP_KEY_TNC:
-                                                          chainTNC += channelBean.getBalance();
-                                                          break;
-                                                      case ConfigList.ASSET_ID_MAP_KEY_NEO:
-                                                          chainNEO += channelBean.getBalance();
-                                                          break;
-                                                      case ConfigList.ASSET_ID_MAP_KEY_GAS:
-                                                          chainGAS += channelBean.getBalance();
-                                                          break;
-                                                  }
-                                              }
-                                          }
-
-                                          wApp.setChannelTNC(BigDecimal.valueOf(chainTNC));
-                                          wApp.setChannelNEO(BigDecimal.valueOf(chainNEO));
-                                          wApp.setChannelGAS(BigDecimal.valueOf(chainGAS));
-                                      }
-
-                                      refreshCardUI();
-                                  }
-                              }
-                );
-            }
-        }, "MainActivity::postGetBalance").start();
-    }
-
-    private boolean postGetBalanceShouldRetry(boolean keepTry) {
-        synchronized (this) {
-            if (!keepTry) {
-                retryTimesNow = 0;
-                return false;
-            }
-
-            if (retryTimesNow == ConfigList.RETRY_TIMES) {
-                retryTimesNow = 0;
-                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                return false;
-            }
-
-            retryTimesNow++;
-            postGetBalance();
-            return true;
-        }
     }
 
     private void initToolbarMenu() {
@@ -613,6 +532,248 @@ public class MainActivity extends BaseActivity {
                 postGetBalance();
             }
         });
+    }
+
+    private void initTabs() {
+        // This is tab transfer.
+        inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
+                if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                    verifyAddress(true);
+                    return true;
+                }
+                return false;
+            }
+        });
+        inputTransferTo.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean b) {
+                boolean focusOut = !b;
+                if (focusOut) {
+                    verifyAddress(false);
+                }
+            }
+        });
+        inputAssetsTrans.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                System.out.println(i);
+            }
+        });
+        btnTransferTo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                verifyAddress(true);
+            }
+        });
+
+        // This is tab add channel.
+        btnAddChannel.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        attemptAddChannel();
+                    }
+                }
+        );
+
+        // This is tab channel list.
+        refreshChannelListUI();
+
+        // TODO This is tab record.
+
+        // This is tab bar.
+        tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+                letTabsBecomeGone();
+                switch (menuItem.getItemId()) {
+                    case R.id.navigationTransfer:
+                        tabTransfer.setVisibility(View.VISIBLE);
+                        postGetBalance();
+                        return true;
+                    case R.id.navigationAddChannel:
+                        tabAddChannel.setVisibility(View.VISIBLE);
+                        postGetBalance();
+                        return true;
+                    case R.id.navigationChannelList:
+                        tabChannelList.setVisibility(View.VISIBLE);
+                        postGetBalance();
+                        return true;
+                    case R.id.navigationRecord:
+                        tabRecord.setVisibility(View.VISIBLE);
+                        postGetBalance();
+                        return true;
+                }
+                return false;
+            }
+        });
+
+        tabTransfer.setVisibility(View.VISIBLE);
+    }
+
+    private void letTabsBecomeGone() {
+        tabTransfer.setVisibility(View.GONE);
+        tabAddChannel.setVisibility(View.GONE);
+        tabChannelList.setVisibility(View.GONE);
+        tabRecord.setVisibility(View.GONE);
+    }
+
+    /* ---------------------------------- UI THREAD METHODS ---------------------------------- */
+
+    private synchronized void refreshCardUI() {
+        View card;
+        for (int cardIndex = 0; cardIndex < cardContainer.getChildCount(); cardIndex++) {
+            card = cardContainer.getChildAt(cardIndex);
+            refreshCardUI(card);
+        }
+    }
+
+    private synchronized void refreshCardUI(View view) {
+        Wallet wallet = wApp.getWallet();
+        TextView cardHeader = view.findViewById(R.id.cardHeader);
+        TextView cardChainBalance = view.findViewById(R.id.cardChainBalance);
+        TextView channelBalance = view.findViewById(R.id.cardChannelBalance);
+        TextView cardAddress = view.findViewById(R.id.cardAddress);
+
+        if (wallet == null) {
+            cardAddress.setText(getString(R.string.please_login));
+        } else if (wallet.getAddress() != null) {
+            cardAddress.setText(wallet.getAddress());
+        }
+
+        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+        if (split.length > 0) {
+            switch (split[split.length - 1]) {
+                case "TNC":
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
+                    break;
+                case "NEO":
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
+                    break;
+                case "GAS":
+                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
+                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
+                    break;
+            }
+        }
+    }
+
+    private void refreshChannelListUI() {
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        if (channelList == null) {
+            addChannelView(wApp.getNet(), null);
+        } else {
+            String net = wApp.getNet();
+            ChannelBean channelBean;
+            for (Map<String, ChannelBean> channelBeanWithType : channelList) {
+                Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                    channelBean = channelBeanWithType.get(net);
+                    addChannelView(net, channelBean);
+                }
+            }
+        }
+    }
+
+    /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
+
+    private synchronized void postGetBalance() {
+        final Wallet wallet = wApp.getWallet();
+
+        if (wallet == null) {
+            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+            return;
+        }
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+
+                JSONRpcClient client = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrl())
+                        .method("getBalance")
+                        .params(wallet.getAddress())
+                        .id("1")
+                        .build();
+
+                final String response = client.post();
+
+                runOnUiThread(new Runnable() {
+                                  @Override
+                                  public void run() {
+                                      if (response == null) {
+                                          ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                          return;
+                                      }
+
+                                      GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
+
+                                      wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
+                                      wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
+                                      wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
+
+                                      // On channel value.
+                                      List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+                                      if (channelList != null) {
+                                          double chainTNC = 0;
+                                          double chainNEO = 0;
+                                          double chainGAS = 0;
+                                          String net = wApp.getNet();
+                                          String assetName;
+                                          ChannelBean channelBean;
+                                          for (Map<String, ChannelBean> channelBeanWithType : channelList) {
+                                              Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                                              if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                                                  channelBean = channelBeanWithType.get(net);
+                                                  assetName = channelBean.getAssetName();
+                                                  switch (assetName) {
+                                                      case ConfigList.ASSET_ID_MAP_KEY_TNC:
+                                                          chainTNC += channelBean.getBalance();
+                                                          break;
+                                                      case ConfigList.ASSET_ID_MAP_KEY_NEO:
+                                                          chainNEO += channelBean.getBalance();
+                                                          break;
+                                                      case ConfigList.ASSET_ID_MAP_KEY_GAS:
+                                                          chainGAS += channelBean.getBalance();
+                                                          break;
+                                                  }
+                                              }
+                                          }
+
+                                          wApp.setChannelTNC(BigDecimal.valueOf(chainTNC));
+                                          wApp.setChannelNEO(BigDecimal.valueOf(chainNEO));
+                                          wApp.setChannelGAS(BigDecimal.valueOf(chainGAS));
+                                      }
+
+                                      refreshCardUI();
+                                  }
+                              }
+                );
+            }
+        }, "MainActivity::postGetBalance").start();
+    }
+
+    private boolean postGetBalanceShouldRetry(boolean keepTry) {
+        synchronized (this) {
+            if (!keepTry) {
+                retryTimesNow = 0;
+                return false;
+            }
+
+            if (retryTimesNow == ConfigList.RETRY_TIMES) {
+                retryTimesNow = 0;
+                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                return false;
+            }
+
+            retryTimesNow++;
+            postGetBalance();
+            return true;
+        }
     }
 
     private synchronized void verifyAddress(final boolean doPay) {
@@ -704,7 +865,7 @@ public class MainActivity extends BaseActivity {
         }, "MainActivity::isValidAddress").start();
     }
 
-    private void transfer(String toAddressStr) {
+    private void transfer(@NonNull String toAddressStr) {
         final String amountTrim = inputAmount.getText().toString().trim();
         if ("".equals(amountTrim)) {
             inputAmount.setError("Please input amount.");
@@ -791,7 +952,7 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private void postConstructTx(final String validToAddress, final String validAmount, final String assetName) {
+    private void postConstructTx(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
         // Send post to transfer to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -829,14 +990,22 @@ public class MainActivity extends BaseActivity {
                         }
 
                         final ConstructTxBean bean = gson.fromJson(response, ConstructTxBean.class);
-                        postSendrawtransaction(bean.getResult().getTxData(), bean.getResult().getTxid(), bean.getResult().getWitness());
+                        String txData = bean.getResult().getTxData();
+                        String witness = bean.getResult().getWitness();
+                        String txid = bean.getResult().getTxid();
+                        if (txData == null || witness == null || txid == null) {
+                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            btnTransferTo.setClickable(true);
+                            return;
+                        }
+                        postSendrawtransaction(txData, witness, txid);
                     }
                 });
             }
         }, "MainActivity::postConstructTx").start();
     }
 
-    private void postSendrawtransaction(final String txData, final String txid, final String witness) {
+    private void postSendrawtransaction(@NonNull final String txData, @NonNull final String witness, @NonNull final String txid) {
         // Send post to transfer to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -882,92 +1051,6 @@ public class MainActivity extends BaseActivity {
                 });
             }
         }, "MainActivity::postSendrawtransaction").start();
-    }
-
-    private void initTabs() {
-        // This is tab transfer.
-        inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                    verifyAddress(true);
-                    return true;
-                }
-                return false;
-            }
-        });
-        inputTransferTo.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean b) {
-                boolean focusOut = !b;
-                if (focusOut) {
-                    verifyAddress(false);
-                }
-            }
-        });
-        btnTransferTo.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                verifyAddress(true);
-            }
-        });
-
-        // This is tab add channel.
-        btnAddChannel.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        attemptAddChannel();
-                    }
-                }
-        );
-
-        // This is tab channel list.
-        refreshChannelListUI();
-
-        // TODO This is tab record.
-
-        // This is tab bar.
-        tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
-            @Override
-            public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-                letTabsBecomeGone();
-                switch (menuItem.getItemId()) {
-                    case R.id.navigationTransfer:
-                        tabTransfer.setVisibility(View.VISIBLE);
-                        return true;
-                    case R.id.navigationAddChannel:
-                        tabAddChannel.setVisibility(View.VISIBLE);
-                        return true;
-                    case R.id.navigationChannelList:
-                        tabChannelList.setVisibility(View.VISIBLE);
-                        return true;
-                    case R.id.navigationRecord:
-                        tabRecord.setVisibility(View.VISIBLE);
-                        return true;
-                }
-                return false;
-            }
-        });
-
-        tabTransfer.setVisibility(View.VISIBLE);
-    }
-
-    private void refreshChannelListUI() {
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-        if (channelList == null) {
-            addChannelView(wApp.getNet(), null);
-        } else {
-            String net = wApp.getNet();
-            ChannelBean channelBean;
-            for (Map<String, ChannelBean> channelBeanWithType : channelList) {
-                Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
-                if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
-                    channelBean = channelBeanWithType.get(net);
-                    addChannelView(net, channelBean);
-                }
-            }
-        }
     }
 
     private void attemptAddChannel() {
@@ -1358,52 +1441,7 @@ public class MainActivity extends BaseActivity {
         channelListEmpty.setVisibility(View.GONE);
     }
 
-    private void letTabsBecomeGone() {
-        tabTransfer.setVisibility(View.GONE);
-        tabAddChannel.setVisibility(View.GONE);
-        tabChannelList.setVisibility(View.GONE);
-        tabRecord.setVisibility(View.GONE);
-    }
 
-    private synchronized void refreshCardUI() {
-        View card;
-        for (int cardIndex = 0; cardIndex < cardContainer.getChildCount(); cardIndex++) {
-            card = cardContainer.getChildAt(cardIndex);
-            refreshCardUI(card);
-        }
-    }
-
-    private synchronized void refreshCardUI(View view) {
-        Wallet wallet = wApp.getWallet();
-        TextView cardHeader = view.findViewById(R.id.cardHeader);
-        TextView cardChainBalance = view.findViewById(R.id.cardChainBalance);
-        TextView channelBalance = view.findViewById(R.id.cardChannelBalance);
-        TextView cardAddress = view.findViewById(R.id.cardAddress);
-
-        if (wallet == null) {
-            cardAddress.setText(getString(R.string.please_login));
-        } else if (wallet.getAddress() != null) {
-            cardAddress.setText(wallet.getAddress());
-        }
-
-        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
-        if (split.length > 0) {
-            switch (split[split.length - 1]) {
-                case "TNC":
-                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
-                    break;
-                case "NEO":
-                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
-                    break;
-                case "GAS":
-                    cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
-                    break;
-            }
-        }
-    }
 
     /* ---------------------------------- INNER CLASSES ---------------------------------- */
 

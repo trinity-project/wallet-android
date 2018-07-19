@@ -47,7 +47,7 @@
     <string name="verify">Verify</string>
     <string name="password_again">Password again</string>
     <string name="confirm">Confirm</string>
-    <string name="change_password">Change Password</string>
+    <string name="change_app_password">Change App Password</string>
     <string name="user_verify_logo">userVerifyLogo</string>
     <string name="record_price">Price: %1$s %2$s</string>
     <string name="record_fee">Fee: %1$s %2$s</string>

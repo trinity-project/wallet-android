@@ -94,7 +94,7 @@ public class SignInActivity extends BaseActivity {
             }
         });
 
-        // Initialize the logout button event.
+        // Initialize the change app password button event.
         Button btnChangePassword = findViewById(R.id.btnChangePassword);
         btnChangePassword.setOnClickListener(new OnClickListener() {
             @Override
@@ -152,6 +152,8 @@ public class SignInActivity extends BaseActivity {
         } else {
             // Wallet object persistence.
             wApp.setWallet(wallet);
+            // Save the wallet via user password.
+            wApp.saveGlobal();
             // Set the login result.
             setResult(ConfigList.SIGN_IN_RESULT);
             // Go back to the main activity.
@@ -164,7 +166,6 @@ public class SignInActivity extends BaseActivity {
      */
     private void logout() {
         // Wallet object persistence.
-        wApp.setWallet(null);
         wApp.logOut();
         // Set the login result.
         setResult(ConfigList.SIGN_OUT_RESULT);

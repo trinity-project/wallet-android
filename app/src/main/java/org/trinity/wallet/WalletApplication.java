@@ -3,7 +3,6 @@ package org.trinity.wallet;
 import android.app.Application;
 import android.content.SharedPreferences;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -15,6 +14,7 @@ import org.trinity.wallet.entity.RecordBean;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -76,39 +76,73 @@ public final class WalletApplication extends Application {
         return magic;
     }
 
-    public String getNet() {
-        return net;
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        instance = this;
     }
 
     public synchronized boolean isFirstTime() {
-        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "not_first_time.xml");
         String firstTimeUseString = first_time_use.getString(NOT_FIRST_TIME, null);
         return firstTimeUseString == null || !NOT_FIRST_TIME.equals(firstTimeUseString);
     }
 
-    public synchronized void iAmNotFirstTime(@Nullable String oldPassword, @NonNull String newPassword) {
-        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "first_time_use.xml");
+    public synchronized void iAmNotFirstTime(@NonNull String newPassword) {
+        SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "not_first_time.xml");
         SharedPreferences.Editor editorFirstTimeUse = first_time_use.edit();
         editorFirstTimeUse.clear();
         editorFirstTimeUse.putString(NOT_FIRST_TIME, NOT_FIRST_TIME);
         editorFirstTimeUse.apply();
 
-        identityVerifyPrefs = new SecurePreferences(this.getBaseContext(), newPassword, "user_prefs.xml");
+        String oldPassword = passwordOnRAM;
+        boolean tranOldPref = oldPassword != null;
 
-        if (oldPassword != null) {
-            // TODO move things from old to new and then delete old.
+        Map<String, String> old_All_Map = null;
+        if (tranOldPref) {
+            SharedPreferences old_IDPrefs = identityVerifyPrefs;
+            SharedPreferences.Editor old_Editor = old_IDPrefs.edit();
+
+            old_Editor.remove(ConfigList.SAVE_USER_PASSWORD);
+            old_Editor.apply();
+
+            old_All_Map = new LinkedHashMap<>();
+            String _SAVE_VALUE;
+            for (String _SAVE_KEY : ConfigList.SAVE_LIST) {
+                _SAVE_VALUE = old_IDPrefs.getString(_SAVE_KEY, null);
+                if (_SAVE_VALUE == null) {
+                    continue;
+                }
+                old_All_Map.put(_SAVE_KEY, _SAVE_VALUE);
+            }
+
+            old_Editor.clear();
+            old_Editor.apply();
         }
 
-        SharedPreferences.Editor editorIdentityVerify = identityVerifyPrefs.edit();
-        editorIdentityVerify.remove(ConfigList.USER_PASSWORD_KEY);
-        editorIdentityVerify.putString(ConfigList.USER_PASSWORD_KEY, newPassword);
-        editorIdentityVerify.apply();
+        SharedPreferences new_IDPref = new SecurePreferences(this.getBaseContext(), newPassword, "user_prefs.xml");
+        SharedPreferences.Editor new_Editor = new_IDPref.edit();
+
+        if (tranOldPref) {
+            for (String key : old_All_Map.keySet()) {
+                String value = old_All_Map.get(key);
+                new_Editor.putString(key, value);
+            }
+        }
+
+        new_Editor.remove(ConfigList.SAVE_USER_PASSWORD);
+        new_Editor.putString(ConfigList.SAVE_USER_PASSWORD, newPassword);
+        new_Editor.apply();
+        identityVerifyPrefs = new_IDPref;
+
+        passwordOnRAM = newPassword;
     }
 
     public synchronized boolean isKeyFileOpen(String password) {
         identityVerifyPrefs = new SecurePreferences(this.getBaseContext(), password, "user_prefs.xml");
-        String passwordInShare = identityVerifyPrefs.getString(ConfigList.USER_PASSWORD_KEY, null);
+        String passwordInShare = identityVerifyPrefs.getString(ConfigList.SAVE_USER_PASSWORD, null);
         if (passwordInShare != null && password.equals(passwordInShare)) {
+            passwordOnRAM = password;
             return true;
         } else {
             identityVerifyPrefs = null;
@@ -118,23 +152,22 @@ public final class WalletApplication extends Application {
 
     public synchronized void saveGlobal() {
         SharedPreferences.Editor editor = identityVerifyPrefs.edit();
-        editor.remove(ConfigList.SAVE_KEY);
-        boolean isValidWIF = wallet != null && wallet.getWIF() != null && !"".equals(wallet.getWIF()) && wallet.getAddress() != null && !"".equals(wallet.getAddress());
-        if (isValidWIF) {
-            editor.putString(ConfigList.SAVE_KEY, wallet.getWIF());
+        editor.remove(ConfigList.SAVE_WALLET_KEY);
+        if (wallet != null) {
+            editor.putString(ConfigList.SAVE_WALLET_KEY, wallet.getWIF());
         }
         editor.putString(ConfigList.SAVE_NET, net);
         editor.apply();
     }
 
     public synchronized void loadGlobal() {
-        String secureWIF = identityVerifyPrefs.getString(ConfigList.SAVE_KEY, null);
-        if (secureWIF == null || "".equals(secureWIF)) {
+        String savedWIF = identityVerifyPrefs.getString(ConfigList.SAVE_WALLET_KEY, null);
+        if (savedWIF == null || "".equals(savedWIF)) {
             wallet = null;
         } else {
             Wallet walletFromWIF = null;
             try {
-                walletFromWIF = Neoutils.generateFromWIF(secureWIF);
+                walletFromWIF = Neoutils.generateFromWIF(savedWIF);
             } catch (Exception ignored) {
                 this.wallet = null;
             }
@@ -144,6 +177,7 @@ public final class WalletApplication extends Application {
     }
 
     public synchronized void saveData() {
+        // Use WIF not public key because channel alias info is private.
         SharedPreferences pref = new SecurePreferences(this.getBaseContext(), wallet.getWIF(), wallet.getAddress() + ".xml");
         SharedPreferences.Editor editor = pref.edit();
         editor.remove(ConfigList.SAVE_CHANNEL_LIST);
@@ -154,6 +188,7 @@ public final class WalletApplication extends Application {
     }
 
     public synchronized void loadData() {
+        // Use WIF not public key because channel alias info is private.
         SharedPreferences pref = new SecurePreferences(this.getBaseContext(), wallet.getWIF(), wallet.getAddress() + ".xml");
         String channelListJson = pref.getString(ConfigList.SAVE_CHANNEL_LIST, null);
         String recordListJson = pref.getString(ConfigList.SAVE_RECORD_LIST, null);
@@ -171,27 +206,6 @@ public final class WalletApplication extends Application {
             }
             recordList = gson.fromJson(recordListJson, new RecordListTypeToken().getType());
         }
-    }
-
-    @Override
-    public void onCreate() {
-        super.onCreate();
-        instance = this;
-    }
-
-    public synchronized void logOut() {
-        clearBalance();
-        channelList = null;
-        recordList = null;
-    }
-
-    public void clearBalance() {
-        chainTNC = null;
-        channelTNC = null;
-        chainNEO = null;
-        channelNEO = null;
-        chainGAS = null;
-        channelGAS = null;
     }
 
     public synchronized void switchNet(String netType) {
@@ -218,6 +232,23 @@ public final class WalletApplication extends Application {
         }
 
         loadData();
+    }
+
+    public synchronized void logOut() {
+        wallet = null;
+        clearBalance();
+        channelList = null;
+        recordList = null;
+        saveGlobal();
+    }
+
+    public void clearBalance() {
+        chainTNC = null;
+        channelTNC = null;
+        chainNEO = null;
+        channelNEO = null;
+        chainGAS = null;
+        channelGAS = null;
     }
 
     public Wallet getWallet() {
@@ -294,23 +325,15 @@ public final class WalletApplication extends Application {
         saveData();
     }
 
-    public void setIsIdentity(boolean isIdentity) {
-        this.isIdentity = isIdentity;
-    }
-
     public boolean isIdentity() {
         return isIdentity;
     }
 
-    public void setIdentity(boolean isIdentity) {
-        this.isIdentity = isIdentity;
+    public void setIdentity(boolean identity) {
+        isIdentity = identity;
     }
 
-    public String getPasswordOnRAM() {
-        return passwordOnRAM;
-    }
-
-    public void setPasswordOnRAM(String passwordOnRAM) {
-        this.passwordOnRAM = passwordOnRAM;
+    public String getNet() {
+        return net;
     }
 }

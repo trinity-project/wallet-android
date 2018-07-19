@@ -1,11 +1,12 @@
 package org.trinity.wallet;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class ConfigList {
     public static final String REGEX_IP_PORT = "^(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5]):([0-9]|[1-9]\\d{1,3}|[1-5]\\d{4}|6[0-5]{2}[0-3][0-5])$";
-
 
     public static final String MAIN_NET_URL = "http://47.96.175.193:21332";
     public static final String MAIN_NET_URL_FOR_NEO = "http://47.96.175.193:10332";
@@ -28,16 +29,19 @@ public final class ConfigList {
     public static final String NEO_ADDRESS_FIRST = "A";
     public static final String NET_TYPE_MAIN = "MAIN";
     public static final String NET_TYPE_TEST = "TEST";
-    public static final String SAVE_KEY = "WIF";
-    public static final String SAVE_NET = "NET";
-    public static final String SAVE_CHANNEL_LIST = "CHANNEL_LIST";
-    public static final String SAVE_RECORD_LIST = "RECORD_LIST";
-    public static final String USER_PASSWORD_KEY = "PASSWORD";
     public static final int USER_PASSWORD_MIN = 8;
     public static final int USER_PASSWORD_MAX = 16;
     public static final int QR_CODE_WIDTH = 200;
     public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
     public static final String CHANNEL_STATUS_CLEAR = "Clear";
+
+
+    public static final List<String> SAVE_LIST = new ArrayList<>();
+    public static final String SAVE_WALLET_KEY = "WIF";
+    public static final String SAVE_NET = "NET";
+    public static final String SAVE_CHANNEL_LIST = "CHANNEL_LIST";
+    public static final String SAVE_RECORD_LIST = "RECORD_LIST";
+    public static final String SAVE_USER_PASSWORD = "PASSWORD";
 
     public static final Map<String, String> ASSET_ID_MAP = new HashMap<>();
     public static final String ASSET_ID_MAP_KEY_TNC = "TNC";
@@ -50,6 +54,12 @@ public final class ConfigList {
     public static final int COIN_DIGITS = 8;
 
     static {
+        SAVE_LIST.add(SAVE_WALLET_KEY);
+        SAVE_LIST.add(SAVE_NET);
+        SAVE_LIST.add(SAVE_CHANNEL_LIST);
+        SAVE_LIST.add(SAVE_RECORD_LIST);
+        SAVE_LIST.add(SAVE_USER_PASSWORD);
+
         ASSET_ID_MAP.put(ASSET_ID_MAP_KEY_TNC, ASSET_ID_TNC_MAIN);
         ASSET_ID_MAP.put(ASSET_ID_MAP_KEY_NEO, ASSET_ID_NEO);
         ASSET_ID_MAP.put(ASSET_ID_MAP_KEY_GAS, ASSET_ID_GAS);

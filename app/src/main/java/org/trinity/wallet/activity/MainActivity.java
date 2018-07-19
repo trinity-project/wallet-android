@@ -213,10 +213,6 @@ public class MainActivity extends BaseActivity {
     @BindView(R.id.mainContainer)
     ConstraintLayout mainContainer;
     /**
-     * The total number of cards.
-     */
-    private int cardAccount = ConfigList.COIN_TYPE_ACCOUNT;
-    /**
      * The lock for post requests witch gets balance.
      */
     private transient int retryTimesNow = 0;
@@ -224,6 +220,8 @@ public class MainActivity extends BaseActivity {
      * Json util.
      */
     private Gson gson;
+
+    /* ---------------------------------- ANDROID LIFE CYCLES ---------------------------------- */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -261,6 +259,7 @@ public class MainActivity extends BaseActivity {
                 ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
             } else {
                 String scanResult = intentResult.getContents();
+                // TODO handle the cam result analyze the result's type.
                 inputTransferTo.setText(scanResult);
                 verifyAddress(false);
             }
@@ -459,7 +458,7 @@ public class MainActivity extends BaseActivity {
         // Load the wallet via user password.
         wApp.loadGlobal();
         wApp.switchNet(wApp.getNet());
-        netState.setText(getString(R.string.net_state, wApp.getNet().toUpperCase()));
+        netState.setText(getString(R.string.net_state, wApp.getNet().toUpperCase(Locale.getDefault())));
 
         // Init account data.
         postGetBalance();
@@ -549,18 +548,36 @@ public class MainActivity extends BaseActivity {
         inputTransferTo.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean b) {
-                boolean focusOut = !b;
-                if (focusOut) {
+                boolean onFocusOut = !b;
+                if (onFocusOut) {
                     verifyAddress(false);
                 }
             }
         });
-        inputAssetsTrans.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+
+        RadioGroup.OnCheckedChangeListener onRadioCheckedChangeListener = new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup radioGroup, int i) {
-                System.out.println(i);
+                RadioButton checked = findViewById(i);
+                String name = checked.getText().toString().trim().toUpperCase(Locale.getDefault());
+                int cardIndex = 0;
+                switch (name) {
+                    case ConfigList.ASSET_ID_MAP_KEY_TNC:
+                        cardIndex = 0;
+                        break;
+                    case ConfigList.ASSET_ID_MAP_KEY_NEO:
+                        cardIndex = 1;
+                        break;
+                    case ConfigList.ASSET_ID_MAP_KEY_GAS:
+                        cardIndex = 2;
+                        break;
+                }
+                cardContainer.setCurrentItem(cardIndex, true);
             }
-        });
+        };
+
+        inputAssetsTrans.setOnCheckedChangeListener(onRadioCheckedChangeListener);
+
         btnTransferTo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -569,6 +586,8 @@ public class MainActivity extends BaseActivity {
         });
 
         // This is tab add channel.
+        inputAssets.setOnCheckedChangeListener(onRadioCheckedChangeListener);
+
         btnAddChannel.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
@@ -1272,7 +1291,7 @@ public class MainActivity extends BaseActivity {
                                             String.valueOf(resp_2.getMessageBody().getDeposit()),
                                             String.valueOf(resp_2.getMessageBody().getDeposit()),
                                             resp_2.getMessageBody().getFounder().getTxId(),
-                                            ConfigList.ASSET_ID_MAP.get(resp_2.getMessageBody().getAssetType().trim().toUpperCase()))
+                                            ConfigList.ASSET_ID_MAP.get(resp_2.getMessageBody().getAssetType().trim().toUpperCase(Locale.getDefault())))
                                     .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
                                     .build();
 
@@ -1524,7 +1543,7 @@ public class MainActivity extends BaseActivity {
         @Override
         public int getCount() {
             // Show how many total pages.
-            return cardAccount;
+            return ConfigList.COIN_TYPE_ACCOUNT;
         }
     }
 }

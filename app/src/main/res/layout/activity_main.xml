@@ -11,9 +11,8 @@
     <Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
+        android:layout_height="wrap_content"
         android:background="@color/colorTitleBar"
-        android:fitsSystemWindows="true"
         android:theme="@style/AppTheme.WindowTranslucentStatus"
         android:visibility="gone">
 
@@ -93,6 +92,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:fitsSystemWindows="true"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/tab"
         app:layout_constraintTop_toBottomOf="@+id/cardsShell">
@@ -132,5 +132,7 @@
         app:layout_constraintRight_toRightOf="parent"
         app:menu="@menu/menu_tab" />
 
-    <include layout="@layout/activity_main_user_verify" />
+    <include
+        layout="@layout/activity_main_user_verify"
+        android:fitsSystemWindows="true" />
 </android.support.constraint.ConstraintLayout>

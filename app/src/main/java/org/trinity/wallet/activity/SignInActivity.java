@@ -150,10 +150,7 @@ public class SignInActivity extends BaseActivity {
             // form field with an error.
             focusView.requestFocus();
         } else {
-            // Wallet object persistence.
-            wApp.setWallet(wallet);
-            // Save the wallet via user password.
-            wApp.saveGlobal();
+            wApp.signIn(wallet);
             // Set the login result.
             setResult(ConfigList.SIGN_IN_RESULT);
             // Go back to the main activity.
@@ -166,7 +163,7 @@ public class SignInActivity extends BaseActivity {
      */
     private void logout() {
         // Wallet object persistence.
-        wApp.logOut();
+        wApp.signOut();
         // Set the login result.
         setResult(ConfigList.SIGN_OUT_RESULT);
         // Go back to the main activity.

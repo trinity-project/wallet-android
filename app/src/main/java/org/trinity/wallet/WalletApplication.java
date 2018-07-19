@@ -2,12 +2,14 @@ package org.trinity.wallet;
 
 import android.app.Application;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.securepreferences.SecurePreferences;
 
+import org.trinity.util.android.QRCodeUtil;
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.RecordBean;
 
@@ -30,6 +32,9 @@ public final class WalletApplication extends Application {
     private transient volatile static String netUrl;
     private transient volatile static String netUrlForNEO;
     private transient volatile static String magic;
+    /**
+     * The instance of app.
+     */
     private static WalletApplication instance;
     private static Gson gson = new Gson();
     private final String NOT_FIRST_TIME = "NOT_FIRST_TIME";
@@ -38,7 +43,11 @@ public final class WalletApplication extends Application {
      */
     private transient volatile boolean isIdentity;
     private transient String passwordOnRAM;
+    /**
+     * The wallet things.
+     */
     private transient Wallet wallet;
+    private Bitmap addressQR;
     private volatile BigDecimal chainTNC;
     private volatile BigDecimal channelTNC;
     private volatile BigDecimal chainNEO;
@@ -165,13 +174,14 @@ public final class WalletApplication extends Application {
         if (savedWIF == null || "".equals(savedWIF)) {
             wallet = null;
         } else {
-            Wallet walletFromWIF = null;
+            Wallet walletFromWIF;
             try {
                 walletFromWIF = Neoutils.generateFromWIF(savedWIF);
+                this.wallet = walletFromWIF;
+                addressQR = QRCodeUtil.encodeAsBitmap(walletFromWIF.getAddress(), ConfigList.QR_CODE_WIDTH, ConfigList.QR_CODE_HEIGHT);
             } catch (Exception ignored) {
                 this.wallet = null;
             }
-            this.wallet = walletFromWIF;
         }
         net = identityVerifyPrefs.getString(ConfigList.SAVE_NET, ConfigList.NET_TYPE_TEST);
     }
@@ -234,13 +244,24 @@ public final class WalletApplication extends Application {
         loadData();
     }
 
-    public synchronized void logOut() {
+    public synchronized void signOut() {
         wallet = null;
+        addressQR = null;
         clearBalance();
         channelList = null;
         recordList = null;
         saveGlobal();
     }
+
+    public synchronized void signIn(Wallet wallet) {
+        // Wallet object persistence.
+        this.wallet = wallet;
+        // Create the QR code.
+        addressQR = QRCodeUtil.encodeAsBitmap(wallet.getAddress(), ConfigList.QR_CODE_WIDTH, ConfigList.QR_CODE_HEIGHT);
+        // Save the wallet via user password.
+        saveGlobal();
+    }
+
 
     public void clearBalance() {
         chainTNC = null;
@@ -257,6 +278,14 @@ public final class WalletApplication extends Application {
 
     public void setWallet(Wallet wallet) {
         this.wallet = wallet;
+    }
+
+    public Bitmap getAddressQR() {
+        return addressQR;
+    }
+
+    public void setAddressQR(Bitmap addressQR) {
+        this.addressQR = addressQR;
     }
 
     public BigDecimal getChainTNC() {

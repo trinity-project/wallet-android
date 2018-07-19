@@ -2,7 +2,6 @@ package org.trinity.wallet.activity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -229,6 +228,19 @@ public class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+
+        int status_bar_height = this.getResources().getIdentifier("status_bar_height", "dimen", "android");
+        int paddingTop = this.getResources().getDimensionPixelOffset(status_bar_height);
+        int measuredWidth = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        int measuredHeight = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+        toolbar.measure(measuredWidth, measuredHeight);
+        int newWidth = -1;
+        int newHeight = toolbar.getMeasuredHeight() + paddingTop;
+        ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(newWidth, newHeight);
+        toolbar.setLayoutParams(layoutParams);
+        toolbar.setPadding(0, paddingTop, 0, 0);
+        toolbar.requestLayout();
+
         instance = MainActivity.this;
         gson = WalletApplication.getGson();
 
@@ -658,30 +670,32 @@ public class MainActivity extends BaseActivity {
     private synchronized void refreshCardUI(View view) {
         Wallet wallet = wApp.getWallet();
         TextView cardHeader = view.findViewById(R.id.cardHeader);
+        ImageView cardQRAddress = view.findViewById(R.id.cardQRAddress);
         TextView cardChainBalance = view.findViewById(R.id.cardChainBalance);
-        TextView channelBalance = view.findViewById(R.id.cardChannelBalance);
+        TextView cardChannelBalance = view.findViewById(R.id.cardChannelBalance);
         TextView cardAddress = view.findViewById(R.id.cardAddress);
 
         if (wallet == null) {
-            cardAddress.setText(getString(R.string.please_login));
+            cardAddress.setText(getString(R.string.please_sign_in));
         } else if (wallet.getAddress() != null) {
+            cardQRAddress.setImageBitmap(wApp.getAddressQR());
             cardAddress.setText(wallet.getAddress());
         }
 
-        String[] split = cardHeader.getText().toString().split("WALLET INFO\n");
+        String[] split = cardHeader.getText().toString().split(getString(R.string.card_text, ""));
         if (split.length > 0) {
             switch (split[split.length - 1]) {
                 case "TNC":
                     cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainTNC()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
+                    cardChannelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelTNC()));
                     break;
                 case "NEO":
                     cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainNEO()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
+                    cardChannelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelNEO()));
                     break;
                 case "GAS":
                     cardChainBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChainGAS()));
-                    channelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
+                    cardChannelBalance.setText(UIStringUtil.bigDecimalToString(wApp.getChannelGAS()));
                     break;
             }
         }
@@ -710,7 +724,7 @@ public class MainActivity extends BaseActivity {
         final Wallet wallet = wApp.getWallet();
 
         if (wallet == null) {
-            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
             return;
         }
 
@@ -812,7 +826,7 @@ public class MainActivity extends BaseActivity {
             ToastUtil.show(getBaseContext(), "Verifying input.");
 
             if (wallet == null) {
-                ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+                ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
                 return;
             }
 
@@ -986,7 +1000,7 @@ public class MainActivity extends BaseActivity {
                         @Override
                         public void run() {
                             // Toast please login first.
-                            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+                            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
                             btnTransferTo.setClickable(true);
                         }
                     }
@@ -1035,7 +1049,7 @@ public class MainActivity extends BaseActivity {
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             // Toast please login first.
-            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
             btnTransferTo.setClickable(true);
             return;
         }
@@ -1086,7 +1100,7 @@ public class MainActivity extends BaseActivity {
         final Wallet wallet = wApp.getWallet();
 
         if (wallet == null) {
-            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
             return;
         }
 
@@ -1095,7 +1109,7 @@ public class MainActivity extends BaseActivity {
         final String publicKeyHex = HexUtil.byteArrayToHex(wallet.getPublicKey());
 
         if (wallet.getPublicKey() == null || "".equals(publicKeyHex)) {
-            ToastUtil.show(getBaseContext(), getString(R.string.please_login) + '.');
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
             return;
         }
 

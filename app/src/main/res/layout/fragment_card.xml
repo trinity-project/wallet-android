@@ -18,8 +18,8 @@
 
         <ImageView
             android:id="@+id/cardIcon"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="66dp"
+            android:layout_height="66dp"
             android:layout_marginStart="@dimen/activity_horizontal_margin"
             android:layout_marginTop="@dimen/activity_vertical_margin"
             android:contentDescription="@string/card_icon"
@@ -40,6 +40,18 @@
             app:layout_constraintLeft_toRightOf="@id/cardIcon"
             app:layout_constraintTop_toTopOf="@id/cardIcon" />
 
+        <ImageView
+            android:id="@+id/cardQRAddress"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="@dimen/activity_vertical_margin"
+            android:layout_marginEnd="@dimen/activity_horizontal_margin"
+            android:layout_marginTop="@dimen/activity_vertical_margin"
+            android:contentDescription="@string/card_icon"
+            app:layout_constraintBottom_toBottomOf="@+id/cardIcon"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@+id/cardIcon" />
+
         <TextView
             android:id="@+id/cardAddress"
             android:layout_width="match_parent"
@@ -47,7 +59,7 @@
             android:layout_marginEnd="@dimen/activity_horizontal_margin"
             android:layout_marginStart="@dimen/activity_horizontal_margin"
             android:layout_marginTop="@dimen/activity_vertical_margin"
-            android:text="@string/please_login"
+            android:text="@string/please_sign_in"
             android:textAlignment="center"
             android:textIsSelectable="true"
             android:textSize="15sp"

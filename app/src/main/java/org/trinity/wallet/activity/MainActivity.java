@@ -2,6 +2,7 @@ package org.trinity.wallet.activity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -113,7 +114,7 @@ public class MainActivity extends BaseActivity {
     @BindView(R.id.tab)
     BottomNavigationView tab;
     /**
-     * The bodies of main tab.
+     * The buttons & bodies of main tab.
      */
     @BindView(R.id.tabTransfer)
     ConstraintLayout tabTransfer;
@@ -258,10 +259,15 @@ public class MainActivity extends BaseActivity {
             if (intentResult.getContents() == null) {
                 ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
             } else {
-                String scanResult = intentResult.getContents();
-                // TODO handle the cam result analyze the result's type.
-                inputTransferTo.setText(scanResult);
-                verifyAddress(false);
+                String scanResult = intentResult.getContents().trim();
+                if (scanResult.contains("@")) {
+                    inputTNAP.setText(scanResult);
+                    tab.setSelectedItemId(R.id.navigationAddChannel);
+                } else {
+                    inputTransferTo.setText(scanResult);
+                    tab.setSelectedItemId(R.id.navigationTransfer);
+                    verifyAddress(false);
+                }
             }
             return;
         }
@@ -907,7 +913,7 @@ public class MainActivity extends BaseActivity {
         boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
 
         boolean isCoinAmountOK = false;
-        boolean isAmountEnough = false;
+        boolean isAmountAffordable = false;
 
         BigDecimal amountBigDecimal = BigDecimal.valueOf(amountDouble);
         if (getString(R.string.tnc).equals(assetName)) {
@@ -916,21 +922,21 @@ public class MainActivity extends BaseActivity {
             } else {
                 inputAmount.setError("TNC balance is a decimal up to 8 digits.");
             }
-            isAmountEnough = amountBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
+            isAmountAffordable = amountBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
         } else if (getString(R.string.neo).equals(assetName)) {
             if (isCoinInteger) {
                 isCoinAmountOK = true;
             } else {
                 inputAmount.setError("NEO balance is a integer.");
             }
-            isAmountEnough = amountBigDecimal.compareTo(wApp.getChainNEO()) <= 0;
+            isAmountAffordable = amountBigDecimal.compareTo(wApp.getChainNEO()) <= 0;
         } else if (getString(R.string.gas).equals(assetName)) {
             if (isCoinInteger || isCoinDigitsValid) {
                 isCoinAmountOK = true;
             } else {
                 inputAmount.setError("GAS balance is a decimal up to 8 digits.");
             }
-            isAmountEnough = amountBigDecimal.compareTo(wApp.getChainGAS()) <= 0;
+            isAmountAffordable = amountBigDecimal.compareTo(wApp.getChainGAS()) <= 0;
         }
 
         if (!isCoinAmountOK) {
@@ -938,7 +944,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        if (!isAmountEnough) {
+        if (!isAmountAffordable) {
             inputAmount.setError("Balance of current asset is not enough.");
             inputAmount.requestFocus();
             return;
@@ -1093,6 +1099,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
+        // Check the TNAP input.
         final String sTNAPTrim = inputTNAP.getText().toString().toLowerCase().trim();
 
         if ("".equals(sTNAPTrim) || !sTNAPTrim.contains("@")) {
@@ -1121,6 +1128,19 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
+        final String net = wApp.getNet();
+        ChannelBean channelBeanFor;
+        for (Map<String, ChannelBean> channelBeanWithNetType : wApp.getChannelList()) {
+            for (String channelListNet : channelBeanWithNetType.keySet()) {
+                channelBeanFor = channelBeanWithNetType.get(channelListNet);
+                if (net.equals(channelListNet) && sTNAPTrim.equals(channelBeanFor.getTNAP())) {
+                    inputTNAP.setError("Already have a known channel on this gateway.");
+                    return;
+                }
+            }
+        }
+
+        // Check the deposit input.
         final String depositTrim = inputDeposit.getText().toString().trim();
 
         if ("".equals(depositTrim)) {
@@ -1149,7 +1169,7 @@ public class MainActivity extends BaseActivity {
         boolean isCoinAmountOK = false;
         BigDecimal depositBigDecimal = BigDecimal.valueOf(depositDouble);
 
-        boolean isAmountEnough = false;
+        boolean isDepositAffordable = false;
 
         if (getString(R.string.tnc).equals(assetName)) {
             if (isCoinInteger || isCoinDigitsValid) {
@@ -1157,21 +1177,21 @@ public class MainActivity extends BaseActivity {
             } else {
                 inputDeposit.setError("TNC balance is a decimal up to 8 digits.");
             }
-            isAmountEnough = depositBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
+            isDepositAffordable = depositBigDecimal.compareTo(wApp.getChainTNC()) <= 0;
         } else if (getString(R.string.neo).equals(assetName)) {
             if (isCoinInteger) {
                 isCoinAmountOK = true;
             } else {
                 inputDeposit.setError("NEO balance is a integer.");
             }
-            isAmountEnough = depositBigDecimal.compareTo(wApp.getChainNEO()) <= 0;
+            isDepositAffordable = depositBigDecimal.compareTo(wApp.getChainNEO()) <= 0;
         } else if (getString(R.string.gas).equals(assetName)) {
             if (isCoinInteger || isCoinDigitsValid) {
                 isCoinAmountOK = true;
             } else {
                 inputDeposit.setError("GAS balance is a decimal up to 8 digits.");
             }
-            isAmountEnough = depositBigDecimal.compareTo(wApp.getChainGAS()) <= 0;
+            isDepositAffordable = depositBigDecimal.compareTo(wApp.getChainGAS()) <= 0;
         }
 
         if (!isCoinAmountOK) {
@@ -1179,7 +1199,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        if (!isAmountEnough) {
+        if (!isDepositAffordable) {
             inputDeposit.setError("Balance of current asset is not enough.");
             inputDeposit.requestFocus();
             return;
@@ -1372,7 +1392,7 @@ public class MainActivity extends BaseActivity {
                                         new Runnable() {
                                             @Override
                                             public void run() {
-                                                addChannelView(wApp.getNet(), channelBean);
+                                                addChannelView(net, channelBean);
                                                 ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
                                             }
                                         }

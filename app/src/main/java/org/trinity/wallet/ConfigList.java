@@ -20,6 +20,7 @@ public final class ConfigList {
     public static final int SIGN_OUT_RESULT = 2;
     public static final int CHANGE_PASSWORD_RESULT = 3;
     public static final int SCAN_RESULT = 4;
+    public static final int BACK_RESULT = -1;
     public static final int READ_TIME_OUT = 20;
     public static final int WRITE_TIME_OUT = 20;
     public static final int CONNECT_TIME_OUT = 20;

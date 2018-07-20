@@ -97,7 +97,7 @@ public final class WalletApplication extends Application {
         return firstTimeUseString == null || !NOT_FIRST_TIME.equals(firstTimeUseString);
     }
 
-    public synchronized void iAmNotFirstTime(@NonNull String newPassword) {
+    public synchronized void iAmFirstTime(@NonNull String newPassword) {
         SharedPreferences first_time_use = new SecurePreferences(this.getBaseContext(), NOT_FIRST_TIME, "not_first_time.xml");
         SharedPreferences.Editor editorFirstTimeUse = first_time_use.edit();
         editorFirstTimeUse.clear();
@@ -164,6 +164,7 @@ public final class WalletApplication extends Application {
         editor.remove(ConfigList.SAVE_WALLET_KEY);
         if (wallet != null) {
             editor.putString(ConfigList.SAVE_WALLET_KEY, wallet.getWIF());
+            loadData();
         }
         editor.putString(ConfigList.SAVE_NET, net);
         editor.apply();
@@ -179,6 +180,7 @@ public final class WalletApplication extends Application {
                 walletFromWIF = Neoutils.generateFromWIF(savedWIF);
                 this.wallet = walletFromWIF;
                 addressQR = QRCodeUtil.encodeAsBitmap(walletFromWIF.getAddress(), ConfigList.QR_CODE_WIDTH, ConfigList.QR_CODE_HEIGHT);
+                loadData();
             } catch (Exception ignored) {
                 this.wallet = null;
             }

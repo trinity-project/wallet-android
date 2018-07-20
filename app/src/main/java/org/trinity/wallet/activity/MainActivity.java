@@ -229,14 +229,8 @@ public class MainActivity extends BaseActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        int status_bar_height = this.getResources().getIdentifier("status_bar_height", "dimen", "android");
-        int paddingTop = this.getResources().getDimensionPixelOffset(status_bar_height);
-        int measuredWidth = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        int measuredHeight = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        toolbar.measure(measuredWidth, measuredHeight);
-        int newWidth = -1;
-        int newHeight = toolbar.getMeasuredHeight() + paddingTop;
-        ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(newWidth, newHeight);
+        measureToolbar(toolbar);
+        ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(newToolbarWidth, newToolbarHeight);
         toolbar.setLayoutParams(layoutParams);
         toolbar.setPadding(0, paddingTop, 0, 0);
         toolbar.requestLayout();
@@ -251,21 +245,31 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == ConfigList.BACK_RESULT) {
+            refreshCardUI();
+            postGetBalance();
+            refreshChannelListUI();
+            return;
+        }
         if (resultCode == ConfigList.SIGN_IN_RESULT) {
             refreshCardUI();
+            refreshChannelListUI();
+            // TODO refreshRecordUI
             ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
             postGetBalance();
             return;
         }
         if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
+            refreshChannelListUI();
+            // TODO refreshRecordUI
             return;
         }
         if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
             initUserIdentityVerify(true);
             return;
         }
-//        if (resultCode == ConfigList.SCAN_RESULT) {
+
         IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
         if (intentResult != null) {
             if (intentResult.getContents() == null) {
@@ -275,6 +279,9 @@ public class MainActivity extends BaseActivity {
                 if (scanResult.contains("@")) {
                     inputTNAP.setText(scanResult);
                     tab.setSelectedItemId(R.id.navigationAddChannel);
+                    postGetBalance();
+                    refreshChannelListUI();
+                    // TODO refresh record list UI
                 } else {
                     inputTransferTo.setText(scanResult);
                     tab.setSelectedItemId(R.id.navigationTransfer);
@@ -283,9 +290,18 @@ public class MainActivity extends BaseActivity {
             }
             return;
         }
-//            return;
-//        }
+
         postGetBalance();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        tab.setSelectedItemId(R.id.navigationAddChannel);
+        tab.setSelectedItemId(R.id.navigationTransfer);
+        postGetBalance();
+        refreshChannelListUI();
+        // TODO refresh record list ui.
     }
 
     /* ---------------------------------- INIT METHODS ---------------------------------- */
@@ -394,7 +410,7 @@ public class MainActivity extends BaseActivity {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                wApp.iAmNotFirstTime(newPassword);
+                wApp.iAmFirstTime(newPassword);
 
                 runOnUiThread(new Runnable() {
                     @Override
@@ -457,6 +473,11 @@ public class MainActivity extends BaseActivity {
     }
 
     private void endIdentityVerify() {
+        // Load the wallet via user password.
+        wApp.loadGlobal();
+        wApp.switchNet(wApp.getNet());
+        wApp.setIdentity(true);
+
         // Init events of toolbar's menu button click action.
         initToolbarMenu();
         // Init events of cards' click action.
@@ -468,14 +489,10 @@ public class MainActivity extends BaseActivity {
         cardsShell.setVisibility(View.VISIBLE);
         tabsContainer.setVisibility(View.VISIBLE);
         tab.setVisibility(View.VISIBLE);
-        wApp.setIdentity(true);
 
         userVerify.setVisibility(View.GONE);
         btnUserVerify.setClickable(true);
 
-        // Load the wallet via user password.
-        wApp.loadGlobal();
-        wApp.switchNet(wApp.getNet());
         netState.setText(getString(R.string.net_state, wApp.getNet().toUpperCase(Locale.getDefault())));
 
         // Init account data.
@@ -508,6 +525,9 @@ public class MainActivity extends BaseActivity {
                                         "Camera access permission is required for QR code scanning.",
                                         1,
                                         Manifest.permission.CAMERA);
+                                if (!EasyPermissions.hasPermissions(getBaseContext(), Manifest.permission.CAMERA)) {
+                                    break;
+                                }
                                 QRCodeUtil.cameraScan(MainActivity.this);
                                 break;
                             case R.id.menuSwitchNet:
@@ -518,12 +538,16 @@ public class MainActivity extends BaseActivity {
                                 ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                                 netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
+                                refreshChannelListUI();
+                                // TODO refreshRecordUI
                                 break;
                             case R.id.menuTestNet:
                                 wApp.switchNet(ConfigList.NET_TYPE_TEST);
                                 ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                                 netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
+                                refreshChannelListUI();
+                                // TODO refreshRecordUI
                                 break;
                         }
                         return true;
@@ -552,7 +576,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initTabs() {
-        // This is tab transfer.
+        // This is tab attemptTransfer.
         inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -703,17 +727,24 @@ public class MainActivity extends BaseActivity {
 
     private void refreshChannelListUI() {
         List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        String net = wApp.getNet();
         if (channelList == null) {
-            addChannelView(wApp.getNet(), null);
+            channelListEmpty.setVisibility(View.VISIBLE);
         } else {
-            String net = wApp.getNet();
             ChannelBean channelBean;
+            int nowNetChannelCount = 0;
             for (Map<String, ChannelBean> channelBeanWithType : channelList) {
                 Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
                 if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                    nowNetChannelCount++;
                     channelBean = channelBeanWithType.get(net);
-                    addChannelView(net, channelBean);
+                    addChannelView(channelBean);
                 }
+            }
+            if (nowNetChannelCount == 0) {
+                channelListEmpty.setVisibility(View.VISIBLE);
+            } else {
+                channelListEmpty.setVisibility(View.GONE);
             }
         }
     }
@@ -745,12 +776,13 @@ public class MainActivity extends BaseActivity {
                                   @Override
                                   public void run() {
                                       if (response == null) {
-                                          ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                          ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                                           return;
                                       }
 
                                       GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
 
+                                      // On chain value.
                                       wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
                                       wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
                                       wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
@@ -805,7 +837,7 @@ public class MainActivity extends BaseActivity {
 
             if (retryTimesNow == ConfigList.RETRY_TIMES) {
                 retryTimesNow = 0;
-                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                 return false;
             }
 
@@ -867,7 +899,7 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             return;
                         }
 
@@ -883,7 +915,7 @@ public class MainActivity extends BaseActivity {
                             return;
                         }
 
-                        // Show transfer window.
+                        // Show attemptTransfer window.
                         if (layAmount.getVisibility() == View.GONE) {
                             layAmount.setVisibility(View.VISIBLE);
                             labelAssetsTrans.setVisibility(View.VISIBLE);
@@ -896,7 +928,7 @@ public class MainActivity extends BaseActivity {
                         }
 
                         if (doPay) {
-                            transfer(toAddressStr);
+                            attemptTransfer(toAddressStr);
                         }
                     }
                 });
@@ -904,7 +936,7 @@ public class MainActivity extends BaseActivity {
         }, "MainActivity::isValidAddress").start();
     }
 
-    private void transfer(@NonNull String toAddressStr) {
+    private void attemptTransfer(@NonNull String toAddressStr) {
         final String amountTrim = inputAmount.getText().toString().trim();
         if ("".equals(amountTrim)) {
             inputAmount.setError("Please input amount.");
@@ -964,7 +996,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        ToastUtil.show(getBaseContext(), "Doing transfer.\nIt takes a very short time.");
+        ToastUtil.show(getBaseContext(), "Doing attemptTransfer.\nIt takes a very short time.");
         btnTransferTo.setClickable(false);
         postConstructTx(toAddressStr, amountTrim, assetName);
     }
@@ -992,7 +1024,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void postConstructTx(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
-        // Send post to transfer to address.
+        // Send post to attemptTransfer to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             runOnUiThread(
@@ -1023,7 +1055,7 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
                             return;
                         }
@@ -1033,7 +1065,7 @@ public class MainActivity extends BaseActivity {
                         String witness = bean.getResult().getWitness();
                         String txid = bean.getResult().getTxid();
                         if (txData == null || witness == null || txid == null) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
                             return;
                         }
@@ -1045,7 +1077,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void postSendrawtransaction(@NonNull final String txData, @NonNull final String witness, @NonNull final String txid) {
-        // Send post to transfer to address.
+        // Send post to attemptTransfer to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             // Toast please login first.
@@ -1071,14 +1103,14 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
                             return;
                         }
 
                         SendrawtransactionBean bean = gson.fromJson(response, SendrawtransactionBean.class);
                         if (!bean.isResult()) {
-                            ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
                             return;
                         }
@@ -1143,13 +1175,16 @@ public class MainActivity extends BaseActivity {
         }
 
         final String net = wApp.getNet();
-        ChannelBean channelBeanFor;
-        for (Map<String, ChannelBean> channelBeanWithNetType : wApp.getChannelList()) {
-            for (String channelListNet : channelBeanWithNetType.keySet()) {
-                channelBeanFor = channelBeanWithNetType.get(channelListNet);
-                if (net.equals(channelListNet) && sTNAPTrim.equals(channelBeanFor.getTNAP())) {
-                    inputTNAP.setError("Already have a known channel on this gateway.");
-                    return;
+        ChannelBean channelBean;
+        final List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        if (channelList != null) {
+            for (Map<String, ChannelBean> channelBeanWithNetType : channelList) {
+                for (String channelListNet : channelBeanWithNetType.keySet()) {
+                    channelBean = channelBeanWithNetType.get(channelListNet);
+                    if (net.equals(channelListNet) && sTNAPTrim.equals(channelBean.getTNAP())) {
+                        inputTNAP.setError("Already have a known channel on this gateway.");
+                        return;
+                    }
                 }
             }
         }
@@ -1332,15 +1367,7 @@ public class MainActivity extends BaseActivity {
                             String json_5 = client_4.post();
 
                             if (json_5 == null) {
-                                runOnUiThread(
-                                        new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                            }
-                                        }
-                                );
-                                webSocket.close(0, null);
+                                webSocket.cancel();
                                 return;
                             }
 
@@ -1378,45 +1405,49 @@ public class MainActivity extends BaseActivity {
                             String json_9 = client_8.post();
 
                             if (json_9 == null) {
-                                runOnUiThread(
-                                        new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
-                                            }
-                                        }
-                                );
-                                webSocket.close(0, null);
+                                webSocket.cancel();
                                 return;
                             }
 
                             resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
 
-                            boolean addChannelResult = resp_9.isResult();
+                            Boolean addChannelResultFirst = resp_9.isResult();
 
-                            if (addChannelResult) {
+                            // Add channel success.
+                            if (addChannelResultFirst) {
                                 final ChannelBean channelBean = new ChannelBean(
                                         resp_7.getChannelName(),
                                         sTNAPTrim, resp_7.getTxNonce(),
                                         aliasTrim, resp_7.getMessageBody().getDeposit(),
                                         resp_7.getMessageBody().getAssetType(),
                                         ConfigList.CHANNEL_STATUS_CLEAR);
+                                Map<String, ChannelBean> channelBeanWithNetType = new HashMap<>();
+                                channelBeanWithNetType.put(net, channelBean);
+                                List<Map<String, ChannelBean>> wAppChannelList = wApp.getChannelList();
+                                if (wAppChannelList == null) {
+                                    wAppChannelList = new ArrayList<>();
+                                }
+                                wAppChannelList.add(channelBeanWithNetType);
+                                wApp.setChannelList(wAppChannelList);
 
                                 runOnUiThread(
                                         new Runnable() {
                                             @Override
                                             public void run() {
-                                                addChannelView(net, channelBean);
+                                                refreshChannelListUI();
+                                                tab.setSelectedItemId(R.id.navigationChannelList);
+                                                inputTNAP.setText(null);
+                                                inputDeposit.setText(null);
+                                                inputAlias.setText(null);
                                                 ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
                                             }
                                         }
                                 );
 
                                 webSocket.close(0, null);
-                                return;
                             }
-
-                            if (!addChannelResult) {
+                            // Add channel fail.
+                            else {
                                 webSocket.cancel();
                             }
                         }
@@ -1430,7 +1461,7 @@ public class MainActivity extends BaseActivity {
                             @Override
                             public void run() {
                                 btnAddChannel.setClickable(true);
-                                ToastUtil.show(getBaseContext(), "Internal server exception occurred.\nPlease try again later or contact the administrator.");
+                                ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             }
                         });
                     }
@@ -1439,41 +1470,7 @@ public class MainActivity extends BaseActivity {
         }, "MainActivity::attemptAddChannel").start();
     }
 
-    private void addChannelView(@NonNull String net, @Nullable ChannelBean channelBean) {
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-
-        if (channelBean == null) {
-            if (channelList == null) {
-                channelListEmpty.setVisibility(View.VISIBLE);
-                return;
-            }
-            int channelCurrentNetCount = 0;
-            for (Map<String, ChannelBean> channelListWithType : channelList) {
-                Iterator<String> typeIterator = channelListWithType.keySet().iterator();
-                if (typeIterator.hasNext() && wApp.getNet().equals(typeIterator.next())) {
-                    channelCurrentNetCount++;
-                }
-            }
-            if (channelCurrentNetCount == 0) {
-                channelListEmpty.setVisibility(View.VISIBLE);
-                return;
-            }
-            return;
-        }
-
-        if (channelList == null) {
-            channelList = new ArrayList<>();
-        }
-
-        HashMap<String, ChannelBean> channelBeanWithType = new HashMap<>();
-        channelBeanWithType.put(net, channelBean);
-        channelList.add(channelBeanWithType);
-        wApp.setChannelList(channelList);
-
-        if (!net.equals(wApp.getNet())) {
-            return;
-        }
-
+    private void addChannelView(@NonNull ChannelBean channelBean) {
         View channelView = View.inflate(this, R.layout.tab_channel_list_item, null);
         TextView channelName = channelView.findViewById(R.id.channelName);
         TextView channelDeposit = channelView.findViewById(R.id.channelDeposit);

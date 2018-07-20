@@ -3,14 +3,18 @@ package org.trinity.wallet.activity;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.PersistableBundle;
+import android.support.constraint.ConstraintLayout;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toolbar;
 
+import com.google.zxing.Result;
 import com.journeyapps.barcodescanner.CaptureManager;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 
 import org.trinity.util.android.ToastUtil;
+import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 
 import butterknife.BindView;
@@ -18,12 +22,16 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 
 public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.TorchListener {
+    @BindView(R.id.toolbarScan)
+    Toolbar toolbarScan;
+    @BindView(R.id.btnBackScan)
+    Button btnBackScan;
+    @BindView(R.id.scanPlugin)
+    DecoratedBarcodeView scanPlugin;
     @BindView(R.id.btnSwitchLight)
     Button switchLight;
     @BindView(R.id.btnFromGallery)
     Button fromGallery;
-    @BindView(R.id.scanPlugin)
-    DecoratedBarcodeView scanPlugin;
 
     private CaptureManager captureManager;
     private boolean isLightOn = false;
@@ -34,16 +42,34 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
         setContentView(R.layout.activity_scan);
         ButterKnife.bind(this);
 
-        scanPlugin.setStatusText("");
+        measureToolbar(toolbarScan);
+        ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(newToolbarWidth, newToolbarHeight);
+        toolbarScan.setLayoutParams(layoutParams);
+        toolbarScan.setPadding(0, paddingTop, 0, 0);
+        toolbarScan.requestLayout();
+
+        btnBackScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                setResult(ConfigList.BACK_RESULT);
+                finish();
+            }
+        });
+
+        scanPlugin.setStatusText("Address, Payment Code or TNAP");
         scanPlugin.setTorchListener(this);
         if (!canFlash()) {
-            switchLight.setVisibility(View.GONE);
+            switchLight.setClickable(false);
         }
 
         // Init capture.
         captureManager = new CaptureManager(this, scanPlugin);
         captureManager.initializeFromIntent(getIntent(), savedInstanceState);
         captureManager.decode();
+    }
+
+    public void handleDecode(Result result, Bundle bundle) {
+
     }
 
     @Override
@@ -72,6 +98,9 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            setResult(ConfigList.BACK_RESULT);
+        }
         return scanPlugin.onKeyDown(keyCode, event) || super.onKeyDown(keyCode, event);
     }
 

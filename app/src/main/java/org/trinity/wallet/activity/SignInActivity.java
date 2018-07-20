@@ -3,6 +3,7 @@ package org.trinity.wallet.activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.constraint.ConstraintLayout;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -11,6 +12,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toolbar;
 
 import org.trinity.util.HexUtil;
 import org.trinity.wallet.ConfigList;
@@ -26,11 +28,15 @@ import neoutils.Wallet;
  */
 public class SignInActivity extends BaseActivity {
     /**
+     * Toolbar.
+     */
+    @BindView(R.id.toolbarSignIn)
+    Toolbar toolbarSignIn;
+    /**
      * UI references.
      */
     @BindView(R.id.signInPrivateKey)
-    public EditText mPrivateKeyView;
-
+    EditText mPrivateKeyView;
     /**
      * Wallet.
      */
@@ -42,11 +48,18 @@ public class SignInActivity extends BaseActivity {
         setContentView(R.layout.activity_signin);
         ButterKnife.bind(this);
 
+        measureToolbar(toolbarSignIn);
+        ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(newToolbarWidth, newToolbarHeight);
+        toolbarSignIn.setLayoutParams(layoutParams);
+        toolbarSignIn.setPadding(0, paddingTop, 0, 0);
+        toolbarSignIn.requestLayout();
+
         // Initialize the back button event.
         Button back = findViewById(R.id.btnBackLogin);
         back.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
+                setResult(ConfigList.BACK_RESULT);
                 signFinish();
             }
         });

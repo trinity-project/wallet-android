@@ -42,8 +42,8 @@ import com.google.zxing.integration.android.IntentResult;
 
 import org.trinity.util.HexUtil;
 import org.trinity.util.NeoSignUtil;
-import org.trinity.util.UUIDUtil;
 import org.trinity.util.WebSocketMessageTypeUtil;
+import org.trinity.util.algorithm.UUIDUtil;
 import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.android.ToastUtil;
 import org.trinity.util.android.UIStringUtil;
@@ -51,6 +51,7 @@ import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.entity.ChannelBean;
+import org.trinity.wallet.entity.RecordBean;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
@@ -213,6 +214,14 @@ public class MainActivity extends BaseActivity {
     @BindView(R.id.mainContainer)
     ConstraintLayout mainContainer;
     /**
+     * Use this to know channel needs to be re drawn.
+     */
+    private List<Map<String, ChannelBean>> channelListInActivity;
+    /**
+     * Use this to know record needs to be re drawn.
+     */
+    private List<Map<String, RecordBean>> recordListInActivity;
+    /**
      * The lock for post requests witch gets balance.
      */
     private transient int retryTimesNow = 0;
@@ -254,7 +263,7 @@ public class MainActivity extends BaseActivity {
         if (resultCode == ConfigList.SIGN_IN_RESULT) {
             refreshCardUI();
             refreshChannelListUI();
-            // TODO refreshRecordUI
+            refreshRecordUI();
             ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
             postGetBalance();
             return;
@@ -262,7 +271,7 @@ public class MainActivity extends BaseActivity {
         if (resultCode == ConfigList.SIGN_OUT_RESULT) {
             refreshCardUI();
             refreshChannelListUI();
-            // TODO refreshRecordUI
+            refreshRecordUI();
             return;
         }
         if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
@@ -281,7 +290,7 @@ public class MainActivity extends BaseActivity {
                     tab.setSelectedItemId(R.id.navigationAddChannel);
                     postGetBalance();
                     refreshChannelListUI();
-                    // TODO refresh record list UI
+                    refreshRecordUI();
                 } else {
                     inputTransferTo.setText(scanResult);
                     tab.setSelectedItemId(R.id.navigationTransfer);
@@ -292,16 +301,6 @@ public class MainActivity extends BaseActivity {
         }
 
         postGetBalance();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        tab.setSelectedItemId(R.id.navigationAddChannel);
-        tab.setSelectedItemId(R.id.navigationTransfer);
-        postGetBalance();
-        refreshChannelListUI();
-        // TODO refresh record list ui.
     }
 
     /* ---------------------------------- INIT METHODS ---------------------------------- */
@@ -497,6 +496,8 @@ public class MainActivity extends BaseActivity {
 
         // Init account data.
         postGetBalance();
+        refreshChannelListUI();
+        refreshRecordUI();
     }
 
     private void initToolbarMenu() {
@@ -539,7 +540,7 @@ public class MainActivity extends BaseActivity {
                                 netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
                                 refreshChannelListUI();
-                                // TODO refreshRecordUI
+                                refreshRecordUI();
                                 break;
                             case R.id.menuTestNet:
                                 wApp.switchNet(ConfigList.NET_TYPE_TEST);
@@ -547,7 +548,7 @@ public class MainActivity extends BaseActivity {
                                 netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                                 postGetBalance();
                                 refreshChannelListUI();
-                                // TODO refreshRecordUI
+                                refreshRecordUI();
                                 break;
                         }
                         return true;
@@ -642,10 +643,15 @@ public class MainActivity extends BaseActivity {
         // This is tab channel list.
         refreshChannelListUI();
 
-        // TODO This is tab record.
+        // This is tab record.
+        refreshRecordUI();
 
+        // Reset tab index.
+        tab.setOnFocusChangeListener(null);
+        tab.setSelectedItemId(R.id.navigationAddChannel);
+        tab.setSelectedItemId(R.id.navigationTransfer);
         // This is tab bar.
-        tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+        BottomNavigationView.OnNavigationItemSelectedListener onTabNavigationItemSelectedListener = new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 letTabsBecomeGone();
@@ -669,7 +675,8 @@ public class MainActivity extends BaseActivity {
                 }
                 return false;
             }
-        });
+        };
+        tab.setOnNavigationItemSelectedListener(onTabNavigationItemSelectedListener);
 
         tabTransfer.setVisibility(View.VISIBLE);
     }
@@ -726,27 +733,44 @@ public class MainActivity extends BaseActivity {
     }
 
     private void refreshChannelListUI() {
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
         String net = wApp.getNet();
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+
+        if (channelListInActivity == channelList) {
+            return;
+        }
+
+        int childCount = channelContainer.getChildCount();
+        if (childCount > 1) {
+            channelContainer.removeViews(1, childCount - 1);
+        }
+
         if (channelList == null) {
+            channelListInActivity = null;
             channelListEmpty.setVisibility(View.VISIBLE);
-        } else {
-            ChannelBean channelBean;
-            int nowNetChannelCount = 0;
-            for (Map<String, ChannelBean> channelBeanWithType : channelList) {
-                Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
-                if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
-                    nowNetChannelCount++;
-                    channelBean = channelBeanWithType.get(net);
-                    addChannelView(channelBean);
-                }
-            }
-            if (nowNetChannelCount == 0) {
-                channelListEmpty.setVisibility(View.VISIBLE);
-            } else {
-                channelListEmpty.setVisibility(View.GONE);
+            return;
+        }
+
+        channelListInActivity = channelList;
+
+        ChannelBean channelBean;
+        int nowNetChannelCount = 0;
+        channelListEmpty.setVisibility(View.GONE);
+        for (Map<String, ChannelBean> channelBeanWithType : channelListInActivity) {
+            Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+            if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                nowNetChannelCount++;
+                channelBean = channelBeanWithType.get(net);
+                addChannelView(channelBean);
             }
         }
+
+        if (nowNetChannelCount == 0) {
+            channelListEmpty.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void refreshRecordUI() {
     }
 
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
@@ -1011,7 +1035,11 @@ public class MainActivity extends BaseActivity {
         }
 
         final boolean payCodeSuccess = false;
-        // TODO Do something to know it is a payment code.
+        // TODO try payment code.
+//        new JSONRpcClient.Builder()
+//                .net(wApp.getNetUrl())
+//                .method("GetRSMCMessage")
+//                .params()
 
         if (!payCodeSuccess) {
             // All invalid.
@@ -1279,8 +1307,6 @@ public class MainActivity extends BaseActivity {
             @Override
             public void run() {
                 webSocketClient.connect(new WebSocketListener() {
-                    private boolean iAmSender = true;
-
                     private ACRegisterChannelBean req_1;
                     private ACFounderBean resp_2;
                     private ACFounderSignBean req_3;
@@ -1444,7 +1470,8 @@ public class MainActivity extends BaseActivity {
                                         }
                                 );
 
-                                webSocket.close(0, null);
+                                // TODO Sockets always connects when app on.
+                                webSocket.close(1000, null);
                             }
                             // Add channel fail.
                             else {

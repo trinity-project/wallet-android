@@ -4,20 +4,16 @@ import android.content.Context;
 import android.support.annotation.Nullable;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
-import android.widget.RadioButton;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.trinity.util.EncryptUtil;
 import org.trinity.util.HexUtil;
 import org.trinity.util.NeoSignUtil;
-import org.trinity.util.UUIDUtil;
+import org.trinity.util.algorithm.UUIDUtil;
 import org.trinity.util.WebSocketMessageTypeUtil;
-import org.trinity.util.android.ToastUtil;
-import org.trinity.wallet.activity.MainActivity;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
@@ -27,7 +23,6 @@ import org.trinity.wallet.net.websocket.ACFounderBean;
 import org.trinity.wallet.net.websocket.ACFounderSignBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
 
-import java.math.BigDecimal;
 import java.util.concurrent.CountDownLatch;
 
 import neoutils.Neoutils;
@@ -37,7 +32,6 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 
 import static org.junit.Assert.assertEquals;
-import static org.trinity.wallet.activity.BaseActivity.wApp;
 
 /**
  * Instrumented test, which will execute on an Android device.

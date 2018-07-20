@@ -1,10 +1,12 @@
-package org.trinity.util;
+package org.trinity.util.algorithm;
+
+import org.trinity.util.HexUtil;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class EncryptUtil {
+public final class MD5Util {
     /**
      * MD5 encrypt.
      *

@@ -30,17 +30,21 @@ public final class HexUtil {
      * @return Byte array
      */
     public static byte[] hexToByteArray(String hex) {
-        if (hex == null || "".equals(hex)) {
+        String hexLocal = hex;
+        if (hexLocal == null || "".equals(hexLocal)) {
             return null;
         }
-        int hexLen = hex.length();
+        if (hexLocal.toLowerCase().contains("0x")) {
+            hexLocal = hexLocal.substring(2);
+        }
+        int hexLen = hexLocal.length();
         if (hexLen % 2 == 1) {
             hexLen++;
-            hex = '0' + hex;
+            hexLocal = '0' + hexLocal;
         }
         byte[] bytes = new byte[(hexLen / 2)];
         for (int i = 0; i < hexLen; i += 2) {
-            bytes[i / 2] = hexToByte(hex.substring(i, i + 2));
+            bytes[i / 2] = hexToByte(hexLocal.substring(i, i + 2));
         }
         return bytes;
     }

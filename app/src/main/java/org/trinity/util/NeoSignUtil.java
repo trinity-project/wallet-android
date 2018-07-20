@@ -2,7 +2,7 @@ package org.trinity.util;
 
 import neoutils.Neoutils;
 
-public class NeoSignUtil {
+public final class NeoSignUtil {
     public static byte[] sign(String srcHex, byte[] keyBytes) {
         return sign(HexUtil.hexToByteArray(srcHex), HexUtil.byteArrayToHex(keyBytes));
     }

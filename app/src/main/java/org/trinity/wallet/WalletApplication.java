@@ -19,12 +19,19 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import neoutils.Neoutils;
 import neoutils.Wallet;
 
 public final class WalletApplication extends Application {
 
+    /**
+     * The instance of app.
+     */
+    private static WalletApplication instance;
+    private static Gson gson = new Gson();
     /**
      * The net url of neo.
      */
@@ -33,14 +40,13 @@ public final class WalletApplication extends Application {
     private transient volatile static String netUrlForNEO;
     private transient volatile static String magic;
     /**
-     * The instance of app.
+     * The thread pool.
      */
-    private static WalletApplication instance;
-    private static Gson gson = new Gson();
-    private final String NOT_FIRST_TIME = "NOT_FIRST_TIME";
+    private static ExecutorService ioExecutor;
     /**
-     * This is the NEO wallet model.
+     * The identity verify.
      */
+    private final String NOT_FIRST_TIME = "NOT_FIRST_TIME";
     private transient volatile boolean isIdentity;
     private transient String passwordOnRAM;
     /**
@@ -65,16 +71,21 @@ public final class WalletApplication extends Application {
 
     private SharedPreferences identityVerifyPrefs;
 
+    // ====== STATIC GETTER ====== //
+    public static WalletApplication getInstance() {
+        return instance;
+    }
+
     public static Gson getGson() {
         return gson;
     }
 
-    public static String getNetUrl() {
-        return netUrl;
+    public static ExecutorService getIoExecutor() {
+        return ioExecutor;
     }
 
-    public static WalletApplication getInstance() {
-        return instance;
+    public static String getNetUrl() {
+        return netUrl;
     }
 
     public static String getNetUrlForNEO() {
@@ -89,6 +100,7 @@ public final class WalletApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+        ioExecutor = Executors.newSingleThreadExecutor();
     }
 
     public synchronized boolean isFirstTime() {
@@ -264,6 +276,8 @@ public final class WalletApplication extends Application {
         saveGlobal();
     }
 
+
+    // ====== NORMAL GETTER SETTER ====== //
 
     public void clearBalance() {
         chainTNC = null;

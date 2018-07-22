@@ -9,7 +9,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toolbar;
 
-import com.google.zxing.Result;
 import com.journeyapps.barcodescanner.CaptureManager;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
 
@@ -56,7 +55,7 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
             }
         });
 
-        scanPlugin.setStatusText("Address, Payment Code or TNAP");
+        scanPlugin.setStatusText("Address/Payment Code/TNAP");
         scanPlugin.setTorchListener(this);
         if (!canFlash()) {
             switchLight.setClickable(false);
@@ -66,10 +65,6 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
         captureManager = new CaptureManager(this, scanPlugin);
         captureManager.initializeFromIntent(getIntent(), savedInstanceState);
         captureManager.decode();
-    }
-
-    public void handleDecode(Result result, Bundle bundle) {
-
     }
 
     @Override

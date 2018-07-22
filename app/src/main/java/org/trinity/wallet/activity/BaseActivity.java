@@ -9,7 +9,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Toolbar;
 
-import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
 
 import java.lang.reflect.Field;
@@ -24,7 +23,6 @@ public abstract class BaseActivity extends AppCompatActivity {
      * Toolbar UI params.
      */
     protected static int paddingTop;
-
     protected int newToolbarWidth;
     protected int newToolbarHeight;
 
@@ -54,5 +52,9 @@ public abstract class BaseActivity extends AppCompatActivity {
         toolbar.measure(measuredWidth, measuredHeight);
         newToolbarWidth = -1;
         newToolbarHeight = toolbar.getMeasuredHeight() + paddingTop;
+    }
+
+    protected void runOffUiThread(Runnable service) {
+        WalletApplication.getIoExecutor().execute(service);
     }
 }

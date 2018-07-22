@@ -79,6 +79,7 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import pub.devrel.easypermissions.EasyPermissions;
 
+// TODO Set error and toast should not do immediately, set them into activity toast List and set error map.
 public class MainActivity extends BaseActivity {
     /**
      * The activity object.
@@ -285,13 +286,16 @@ public class MainActivity extends BaseActivity {
                 ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
             } else {
                 String scanResult = intentResult.getContents().trim();
-                if (scanResult.contains("@")) {
+                if (scanResult.contains("@") || scanResult.contains(":")) {
                     inputTNAP.setText(scanResult);
                     tab.setSelectedItemId(R.id.navigationAddChannel);
                     postGetBalance();
                     refreshChannelListUI();
                     refreshRecordUI();
-                } else {
+                }
+                // If the length of QR result is bigger than neo address(payment code always longer)
+                // and starts with "A" or "TN".
+                else if (scanResult.length() >= ConfigList.NEO_ADDRESS_LENGTH && (ConfigList.NEO_ADDRESS_FIRST.equals(scanResult.substring(0, 1)) || ConfigList.PAYMENT_CODE_FIRST.equals(scanResult.substring(0, 2)))) {
                     inputTransferTo.setText(scanResult);
                     tab.setSelectedItemId(R.id.navigationTransfer);
                     verifyAddress(false);
@@ -301,6 +305,7 @@ public class MainActivity extends BaseActivity {
         }
 
         postGetBalance();
+        refreshUITotal();
     }
 
     /* ---------------------------------- INIT METHODS ---------------------------------- */
@@ -406,11 +411,11 @@ public class MainActivity extends BaseActivity {
             btnUserVerify.setClickable(true);
             return;
         }
-        new Thread(new Runnable() {
+
+        Runnable service = new Runnable() {
             @Override
             public void run() {
                 wApp.iAmFirstTime(newPassword);
-
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -418,12 +423,13 @@ public class MainActivity extends BaseActivity {
                         inputUserVerify.setText(null);
                         inputUserVerifySure.setText(null);
                         ToastUtil.show(getBaseContext(), "New password effective immediately.");
-
+                        // Init the other.
                         endIdentityVerify();
                     }
                 });
             }
-        }, "MainActivity::userIdentityVerify").start();
+        };
+        runOffUiThread(service);
     }
 
     private void userIdentityVerify(final EditText inputUserVerify) {
@@ -439,11 +445,12 @@ public class MainActivity extends BaseActivity {
             btnUserVerify.setClickable(true);
             return;
         }
-        new Thread(new Runnable() {
+
+        Runnable service = new Runnable() {
             @Override
             public void run() {
-                final boolean isKeyFileOpen = wApp.isKeyFileOpen(password);
-
+                final boolean isKeyFileOpen;
+                isKeyFileOpen = wApp.isKeyFileOpen(password);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -454,14 +461,14 @@ public class MainActivity extends BaseActivity {
                             btnUserVerify.setClickable(true);
                             return;
                         }
-
                         inputUserVerify.setText(null);
-
+                        // Init the other.
                         endIdentityVerify();
                     }
                 });
             }
-        }, "MainActivity::userIdentityVerify").start();
+        };
+        runOffUiThread(service);
     }
 
     private void verifyIdentityHideIME() {
@@ -501,59 +508,57 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initToolbarMenu() {
-        netState.setText(getString(R.string.main_menu_main_net).toUpperCase(Locale.getDefault()));
-        btnMainMenu.setOnClickListener(new View.OnClickListener() {
-            private PopupMenu popupMenu;
+        final PopupMenu popupMenu = new PopupMenu(MainActivity.this, btnMainMenu);
+        popupMenu.getMenuInflater().inflate(R.menu.menu_main, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                CharSequence itemTitle = item.getTitle();
+                int itemId = item.getItemId();
+                switch (itemId) {
+                    case R.id.menuAccount:
+                        Intent intent = new Intent(MainActivity.this, SignInActivity.class);
+                        startActivityForResult(intent, 0);
+                        break;
+                    case R.id.menuScan:
+                        // Request camera permission.
+                        EasyPermissions.requestPermissions(
+                                MainActivity.this,
+                                "Camera access permission is required for QR code scanning.",
+                                1,
+                                Manifest.permission.CAMERA);
+                        if (!EasyPermissions.hasPermissions(getBaseContext(), Manifest.permission.CAMERA)) {
+                            break;
+                        }
+                        QRCodeUtil.cameraScan(MainActivity.this);
+                        break;
+                    case R.id.menuSwitchNet:
+                        // Do nothing here now(maybe not later).
+                        break;
+                    case R.id.menuMainNet:
+                        wApp.switchNet(ConfigList.NET_TYPE_MAIN);
+                        ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
+                        netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
+                        postGetBalance();
+                        refreshChannelListUI();
+                        refreshRecordUI();
+                        break;
+                    case R.id.menuTestNet:
+                        wApp.switchNet(ConfigList.NET_TYPE_TEST);
+                        ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
+                        netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
+                        postGetBalance();
+                        refreshChannelListUI();
+                        refreshRecordUI();
+                        break;
+                }
+                return true;
+            }
+        });
 
+        btnMainMenu.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                popupMenu = new PopupMenu(MainActivity.this, view);
-                popupMenu.getMenuInflater().inflate(R.menu.menu_main, popupMenu.getMenu());
-                popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        CharSequence itemTitle = item.getTitle();
-                        int itemId = item.getItemId();
-                        switch (itemId) {
-                            case R.id.menuAccount:
-                                Intent intent = new Intent(MainActivity.this, SignInActivity.class);
-                                startActivityForResult(intent, 0);
-                                break;
-                            case R.id.menuScan:
-                                // Request camera permission.
-                                EasyPermissions.requestPermissions(
-                                        MainActivity.this,
-                                        "Camera access permission is required for QR code scanning.",
-                                        1,
-                                        Manifest.permission.CAMERA);
-                                if (!EasyPermissions.hasPermissions(getBaseContext(), Manifest.permission.CAMERA)) {
-                                    break;
-                                }
-                                QRCodeUtil.cameraScan(MainActivity.this);
-                                break;
-                            case R.id.menuSwitchNet:
-                                // Do nothing here now(maybe not later).
-                                break;
-                            case R.id.menuMainNet:
-                                wApp.switchNet(ConfigList.NET_TYPE_MAIN);
-                                ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
-                                netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
-                                postGetBalance();
-                                refreshChannelListUI();
-                                refreshRecordUI();
-                                break;
-                            case R.id.menuTestNet:
-                                wApp.switchNet(ConfigList.NET_TYPE_TEST);
-                                ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
-                                netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
-                                postGetBalance();
-                                refreshChannelListUI();
-                                refreshRecordUI();
-                                break;
-                        }
-                        return true;
-                    }
-                });
                 popupMenu.show();
             }
         });
@@ -577,7 +582,7 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initTabs() {
-        // This is tab attemptTransfer.
+        // This is tab addressMode.
         inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -650,11 +655,12 @@ public class MainActivity extends BaseActivity {
         tab.setOnFocusChangeListener(null);
         tab.setSelectedItemId(R.id.navigationAddChannel);
         tab.setSelectedItemId(R.id.navigationTransfer);
+
         // This is tab bar.
-        BottomNavigationView.OnNavigationItemSelectedListener onTabNavigationItemSelectedListener = new BottomNavigationView.OnNavigationItemSelectedListener() {
+        tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
-                letTabsBecomeGone();
+                tabsGone();
                 switch (menuItem.getItemId()) {
                     case R.id.navigationTransfer:
                         tabTransfer.setVisibility(View.VISIBLE);
@@ -675,13 +681,11 @@ public class MainActivity extends BaseActivity {
                 }
                 return false;
             }
-        };
-        tab.setOnNavigationItemSelectedListener(onTabNavigationItemSelectedListener);
-
+        });
         tabTransfer.setVisibility(View.VISIBLE);
     }
 
-    private void letTabsBecomeGone() {
+    private void tabsGone() {
         tabTransfer.setVisibility(View.GONE);
         tabAddChannel.setVisibility(View.GONE);
         tabChannelList.setVisibility(View.GONE);
@@ -689,6 +693,13 @@ public class MainActivity extends BaseActivity {
     }
 
     /* ---------------------------------- UI THREAD METHODS ---------------------------------- */
+
+    // TODO Spread the refreshUITotal() api.
+    private synchronized void refreshUITotal() {
+        refreshCardUI();
+        refreshChannelListUI();
+        refreshRecordUI();
+    }
 
     private synchronized void refreshCardUI() {
         View card;
@@ -775,27 +786,25 @@ public class MainActivity extends BaseActivity {
 
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
 
+    // TODO Post get balance should not happen twice in 0.8 seconds.
+    // TODO Always decoupling the i/o and UI works. Such as postGetBalance() should not have a refreshUITotal() in it, refreshUITotal() is called by postGetBalance()'s father method.
     private synchronized void postGetBalance() {
         final Wallet wallet = wApp.getWallet();
 
         if (wallet == null) {
-            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
             return;
         }
 
-        new Thread(new Runnable() {
+        Runnable service = new Runnable() {
             @Override
             public void run() {
-
                 JSONRpcClient client = new JSONRpcClient.Builder()
                         .net(WalletApplication.getNetUrl())
                         .method("getBalance")
                         .params(wallet.getAddress())
                         .id("1")
                         .build();
-
                 final String response = client.post();
-
                 runOnUiThread(new Runnable() {
                                   @Override
                                   public void run() {
@@ -803,14 +812,11 @@ public class MainActivity extends BaseActivity {
                                           ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                                           return;
                                       }
-
                                       GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
-
                                       // On chain value.
                                       wApp.setChainTNC(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getTncBalance())));
                                       wApp.setChainNEO(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getNeoBalance())));
                                       wApp.setChainGAS(BigDecimal.valueOf(Double.valueOf(responseBean.getResult().getGasBalance())));
-
                                       // On channel value.
                                       List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
                                       if (channelList != null) {
@@ -838,56 +844,34 @@ public class MainActivity extends BaseActivity {
                                                   }
                                               }
                                           }
-
                                           wApp.setChannelTNC(BigDecimal.valueOf(chainTNC));
                                           wApp.setChannelNEO(BigDecimal.valueOf(chainNEO));
                                           wApp.setChannelGAS(BigDecimal.valueOf(chainGAS));
                                       }
-
-                                      refreshCardUI();
+                                      refreshUITotal();
                                   }
                               }
                 );
             }
-        }, "MainActivity::postGetBalance").start();
-    }
-
-    private boolean postGetBalanceShouldRetry(boolean keepTry) {
-        synchronized (this) {
-            if (!keepTry) {
-                retryTimesNow = 0;
-                return false;
-            }
-
-            if (retryTimesNow == ConfigList.RETRY_TIMES) {
-                retryTimesNow = 0;
-                ToastUtil.show(getBaseContext(), "Implicit problem happened.");
-                return false;
-            }
-
-            retryTimesNow++;
-            postGetBalance();
-            return true;
-        }
+        };
+        runOffUiThread(service);
     }
 
     private synchronized void verifyAddress(final boolean doPay) {
-        // Wallet
-        final Wallet wallet = wApp.getWallet();
-
         inputTransferTo.setError(null);
         inputAmount.setError(null);
 
+        // Wallet
+        final Wallet wallet = wApp.getWallet();
+
         if (doPay && layAmount.getVisibility() == View.GONE) {
             ToastUtil.show(getBaseContext(), "Verifying input.");
-
             if (wallet == null) {
                 ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
                 return;
             }
-
-            postGetBalance();
         }
+        postGetBalance();
 
         final String toAddressStr = inputTransferTo.getText().toString().trim();
         if ("".equals(toAddressStr) || wallet.getAddress().equals(toAddressStr)) {
@@ -895,7 +879,7 @@ public class MainActivity extends BaseActivity {
                 // Invalid text error.
                 inputTransferTo.setError("Invalid input.");
                 inputTransferTo.requestFocus();
-                attemptPayCode(true);
+                payCodeMode(true);
             }
             return;
         }
@@ -903,12 +887,12 @@ public class MainActivity extends BaseActivity {
         boolean isLooksLikeAnAddress = inputTransferTo.length() == ConfigList.NEO_ADDRESS_LENGTH && ConfigList.NEO_ADDRESS_FIRST.equals(toAddressStr.substring(0, 1));
 
         if (!isLooksLikeAnAddress) {
-            attemptPayCode(doPay);
+            payCodeMode(doPay);
             return;
         }
 
         // Send post to verify to address.
-        new Thread(new Runnable() {
+        Runnable service = new Runnable() {
             @Override
             public void run() {
                 JSONRpcClient client = new JSONRpcClient.Builder()
@@ -934,12 +918,12 @@ public class MainActivity extends BaseActivity {
 
                         if (!isValid) {
                             if (doPay) {
-                                attemptPayCode(true);
+                                payCodeMode(true);
                             }
                             return;
                         }
 
-                        // Show attemptTransfer window.
+                        // Show addressMode window.
                         if (layAmount.getVisibility() == View.GONE) {
                             layAmount.setVisibility(View.VISIBLE);
                             labelAssetsTrans.setVisibility(View.VISIBLE);
@@ -952,15 +936,16 @@ public class MainActivity extends BaseActivity {
                         }
 
                         if (doPay) {
-                            attemptTransfer(toAddressStr);
+                            addressMode(toAddressStr);
                         }
                     }
                 });
             }
-        }, "MainActivity::isValidAddress").start();
+        };
+        runOffUiThread(service);
     }
 
-    private void attemptTransfer(@NonNull String toAddressStr) {
+    private void addressMode(@NonNull String toAddressStr) {
         final String amountTrim = inputAmount.getText().toString().trim();
         if ("".equals(amountTrim)) {
             inputAmount.setError("Please input amount.");
@@ -1020,12 +1005,12 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        ToastUtil.show(getBaseContext(), "Doing attemptTransfer.\nIt takes a very short time.");
+        ToastUtil.show(getBaseContext(), "Doing addressMode.\nIt takes a very short time.");
         btnTransferTo.setClickable(false);
         postConstructTx(toAddressStr, amountTrim, assetName);
     }
 
-    private void attemptPayCode(boolean doPay) {
+    private void payCodeMode(boolean doPay) {
         layAmount.setVisibility(View.GONE);
         labelAssetsTrans.setVisibility(View.GONE);
         inputAssetsTrans.setVisibility(View.GONE);
@@ -1051,8 +1036,9 @@ public class MainActivity extends BaseActivity {
         }
     }
 
+    // TODO Inline the address transfer procedure, or some others, just like what the add channel method do.
     private void postConstructTx(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
-        // Send post to attemptTransfer to address.
+        // Send post to addressMode to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             runOnUiThread(
@@ -1067,7 +1053,7 @@ public class MainActivity extends BaseActivity {
             );
             return;
         }
-        new Thread(new Runnable() {
+        Runnable service = new Runnable() {
             @Override
             public void run() {
                 String myAddress = wallet.getAddress();
@@ -1101,11 +1087,12 @@ public class MainActivity extends BaseActivity {
                     }
                 });
             }
-        }, "MainActivity::postConstructTx").start();
+        };
+        runOffUiThread(service);
     }
 
     private void postSendrawtransaction(@NonNull final String txData, @NonNull final String witness, @NonNull final String txid) {
-        // Send post to attemptTransfer to address.
+        // Send post to addressMode to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
             // Toast please login first.
@@ -1113,7 +1100,7 @@ public class MainActivity extends BaseActivity {
             btnTransferTo.setClickable(true);
             return;
         }
-        new Thread(new Runnable() {
+        Runnable service = new Runnable() {
             @Override
             public void run() {
                 String sign = NeoSignUtil.signToHex(txData, wallet.getPrivateKey());
@@ -1149,7 +1136,8 @@ public class MainActivity extends BaseActivity {
                     }
                 });
             }
-        }, "MainActivity::postSendrawtransaction").start();
+        };
+        runOffUiThread(service);
     }
 
     private void attemptAddChannel() {
@@ -1303,23 +1291,24 @@ public class MainActivity extends BaseActivity {
         final WebSocketClient webSocketClient = new WebSocketClient.Builder()
                 .url("ws://" + sTNAP_IpPort8766)
                 .build();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                webSocketClient.connect(new WebSocketListener() {
-                    private ACRegisterChannelBean req_1;
-                    private ACFounderBean resp_2;
-                    private ACFounderSignBean req_3;
-                    private JSONRpcClient client_4;
-                    private FunderTransactionBean resp_5;
-                    private ACFounderBean req_6;
-                    private ACFounderSignBean resp_7;
-                    private JSONRpcClient client_8;
-                    private SendrawtransactionBean resp_9;
 
+        webSocketClient.connect(new WebSocketListener() {
+            private ACRegisterChannelBean req_1;
+            private ACFounderBean resp_2;
+            private ACFounderSignBean req_3;
+            private JSONRpcClient client_4;
+            private FunderTransactionBean resp_5;
+            private ACFounderBean req_6;
+            private ACFounderSignBean resp_7;
+            private JSONRpcClient client_8;
+            private SendrawtransactionBean resp_9;
+
+            @Override
+            public void onOpen(final WebSocket webSocket, final Response response) {
+                super.onOpen(webSocket, response);
+                Runnable service = new Runnable() {
                     @Override
-                    public void onOpen(WebSocket webSocket, Response response) {
-                        super.onOpen(webSocket, response);
+                    public void run() {
                         req_1 = new ACRegisterChannelBean();
                         req_1.setSender(sTNAP8766);
                         req_1.setReceiver(sTNAPTrim);
@@ -1332,23 +1321,25 @@ public class MainActivity extends BaseActivity {
                         String text = gson.toJson(req_1);
                         webSocket.send(text);
                     }
+                };
+                runOffUiThread(service);
+            }
 
+            @Override
+            public void onMessage(final WebSocket webSocket, final String text) {
+                super.onMessage(webSocket, text);
+                Runnable service = new Runnable() {
                     @Override
-                    public void onMessage(WebSocket webSocket, String text) {
-                        super.onMessage(webSocket, text);
-
+                    public void run() {
                         String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
-
                         if ("RegisterChannelFail".equals(messageTypeStr)) {
                             webSocket.cancel();
                             return;
                         }
-
                         if ("FounderFail".equals(messageTypeStr)) {
                             webSocket.cancel();
                             return;
                         }
-
                         if ("Founder".equals(messageTypeStr)) {
                             resp_2 = gson.fromJson(text, ACFounderBean.class);
                             req_3 = new ACFounderSignBean();
@@ -1391,12 +1382,10 @@ public class MainActivity extends BaseActivity {
                                     .build();
 
                             String json_5 = client_4.post();
-
                             if (json_5 == null) {
                                 webSocket.cancel();
                                 return;
                             }
-
                             resp_5 = gson.fromJson(json_5, FunderTransactionBean.class);
 
                             req_6 = new ACFounderBean();
@@ -1412,7 +1401,6 @@ public class MainActivity extends BaseActivity {
                             messageBody4.setCommitment(gson.fromJson(gson.toJson(resp_5.getResult().getC_TX()), ACFounderBean.MessageBodyBean.CommitmentBean.class));
                             messageBody4.setRevocableDelivery(gson.fromJson(gson.toJson(resp_5.getResult().getR_TX()), ACFounderBean.MessageBodyBean.RevocableDeliveryBean.class));
                             req_6.setMessageBody(messageBody4);
-
                             String send6 = gson.toJson(req_6);
                             webSocket.send(send6);
 
@@ -1429,14 +1417,11 @@ public class MainActivity extends BaseActivity {
                                     .build();
 
                             String json_9 = client_8.post();
-
                             if (json_9 == null) {
                                 webSocket.cancel();
                                 return;
                             }
-
                             resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
-
                             Boolean addChannelResultFirst = resp_9.isResult();
 
                             // Add channel success.
@@ -1455,7 +1440,6 @@ public class MainActivity extends BaseActivity {
                                 }
                                 wAppChannelList.add(channelBeanWithNetType);
                                 wApp.setChannelList(wAppChannelList);
-
                                 runOnUiThread(
                                         new Runnable() {
                                             @Override
@@ -1465,36 +1449,43 @@ public class MainActivity extends BaseActivity {
                                                 inputTNAP.setText(null);
                                                 inputDeposit.setText(null);
                                                 inputAlias.setText(null);
+                                                btnAddChannel.setClickable(true);
                                                 ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
                                             }
                                         }
                                 );
-
                                 // TODO Sockets always connects when app on.
                                 webSocket.close(1000, null);
                             }
                             // Add channel fail.
                             else {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        btnAddChannel.setClickable(true);
+                                    }
+                                });
                                 webSocket.cancel();
                             }
                         }
                     }
+                };
+                runOffUiThread(service);
+            }
 
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                super.onFailure(webSocket, t, response);
+                t.printStackTrace();
+                runOnUiThread(new Runnable() {
                     @Override
-                    public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
-                        super.onFailure(webSocket, t, response);
-                        t.printStackTrace();
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                btnAddChannel.setClickable(true);
-                                ToastUtil.show(getBaseContext(), "Implicit problem happened.");
-                            }
-                        });
+                    public void run() {
+                        btnAddChannel.setClickable(true);
+                        ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                     }
                 });
             }
-        }, "MainActivity::attemptAddChannel").start();
+        });
     }
 
     private void addChannelView(@NonNull ChannelBean channelBean) {
@@ -1586,7 +1577,6 @@ public class MainActivity extends BaseActivity {
      * one of the sections/tabs/pages.
      */
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
-
         SectionsPagerAdapter(FragmentManager fm) {
             super(fm);
         }

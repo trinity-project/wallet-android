@@ -28,6 +28,7 @@ public final class ConfigList {
     public static final int RETRY_TIMES = 3;
     public static final int NEO_ADDRESS_LENGTH = 34;
     public static final String NEO_ADDRESS_FIRST = "A";
+    public static final String PAYMENT_CODE_FIRST = "TN";
     public static final String NET_TYPE_MAIN = "MAIN";
     public static final String NET_TYPE_TEST = "TEST";
     public static final int USER_PASSWORD_MIN = 8;

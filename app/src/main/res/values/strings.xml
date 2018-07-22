@@ -55,5 +55,4 @@
     <string name="channel_balance">Balance: %1$s %2$s</string>
     <string name="channel_state">State: %1$s</string>
     <string name="net_state">%1$s NET</string>
-
 </resources>

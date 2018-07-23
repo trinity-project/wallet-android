@@ -6,26 +6,28 @@ import java.util.List;
 import java.util.Map;
 
 public final class ConfigList {
+    public static final String REGEX_NEO_PUBLIC_KEY = "[0-9a-f]{66}";
     public static final String REGEX_IP_PORT = "^(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5]):([0-9]|[1-9]\\d{1,3}|[1-5]\\d{4}|6[0-5]{2}[0-3][0-5])$";
 
-    public static final String MAIN_NET_URL = "http://47.96.175.193:21332";
-    public static final String MAIN_NET_URL_FOR_NEO = "http://47.96.175.193:10332";
-    public static final String TEST_NET_URL = "http://47.254.64.251:21332";
-    public static final String TEST_NET_URL_FOR_NEO = "http://47.254.64.251:20332";
+    public static final String HTTP_URL_PREFIX = "http://";
+    public static final String WS_URL_PREFIX = "ws://";
+    public static final String MAIN_NET_URL = HTTP_URL_PREFIX + "47.96.175.193:21332";
+    public static final String MAIN_NET_URL_FOR_NEO = HTTP_URL_PREFIX + "47.96.175.193:10332";
+    public static final String TEST_NET_URL = HTTP_URL_PREFIX + "47.254.64.251:21332";
+    public static final String TEST_NET_URL_FOR_NEO = HTTP_URL_PREFIX + "47.254.64.251:20332";
     public static final String MAIN_NET_MAGIC = "763040120030515";
     public static final String TEST_NET_MAGIC = "195378745719990331";
 
     public static final int COIN_TYPE_ACCOUNT = 3;
+    public static final int BACK_RESULT = 0;
     public static final int SIGN_IN_RESULT = 1;
     public static final int SIGN_OUT_RESULT = 2;
     public static final int CHANGE_PASSWORD_RESULT = 3;
-    public static final int SCAN_RESULT = 4;
-    public static final int BACK_RESULT = -1;
+    public static final int SCAN_RESULT = -1;
     public static final int READ_TIME_OUT = 20;
     public static final int WRITE_TIME_OUT = 20;
     public static final int CONNECT_TIME_OUT = 20;
     public static final String CLIENT_MEDIA_TYPE = "application/json; charset=utf-8";
-    public static final int RETRY_TIMES = 3;
     public static final int NEO_ADDRESS_LENGTH = 34;
     public static final String NEO_ADDRESS_FIRST = "A";
     public static final String PAYMENT_CODE_FIRST = "TN";
@@ -37,6 +39,7 @@ public final class ConfigList {
     public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
     public static final int QR_MARGIN = 1;
     public static final String CHANNEL_STATUS_CLEAR = "Clear";
+    public static final String GATEWAY_SPV_PORT = "8766";
 
 
     public static final List<String> SAVE_LIST = new ArrayList<>();

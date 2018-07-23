@@ -2,6 +2,8 @@ package org.trinity.wallet.entity;
 
 import android.support.annotation.NonNull;
 
+import org.trinity.wallet.net.websocket.ACFounderSignBean;
+
 public class ChannelBean {
     private String name;
     private String TNAP;
@@ -11,16 +13,29 @@ public class ChannelBean {
     private double balance;
     private String assetName;
     private String state;
+    private ACFounderSignBean founderSign_ISigned;
+    private ACFounderSignBean founderSign_HeSigned;
 
-    public ChannelBean(@NonNull String name, @NonNull String TNAP, @NonNull Integer txNonce, @NonNull String alias, @NonNull Double deposit, @NonNull String assetName, @NonNull String state) {
+    public ChannelBean(@NonNull String name,
+                       @NonNull String TNAP,
+                       int txNonce,
+                       @NonNull String alias,
+                       double deposit,
+                       double balance,
+                       @NonNull String assetName,
+                       @NonNull String state,
+                       @NonNull ACFounderSignBean founderSign_ISigned,
+                       @NonNull ACFounderSignBean founderSign_HeSigned) {
         this.name = name;
         this.TNAP = TNAP;
         this.txNonce = txNonce;
         this.alias = alias;
         this.deposit = deposit;
-        this.balance = deposit;
+        this.balance = balance;
         this.assetName = assetName;
         this.state = state;
+        this.founderSign_ISigned = founderSign_ISigned;
+        this.founderSign_HeSigned = founderSign_HeSigned;
     }
 
     public String getName() {
@@ -85,5 +100,21 @@ public class ChannelBean {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public ACFounderSignBean getFounderSign_ISigned() {
+        return founderSign_ISigned;
+    }
+
+    public void setFounderSign_ISigned(ACFounderSignBean founderSign_ISigned) {
+        this.founderSign_ISigned = founderSign_ISigned;
+    }
+
+    public ACFounderSignBean getFounderSign_HeSigned() {
+        return founderSign_HeSigned;
+    }
+
+    public void setFounderSign_HeSigned(ACFounderSignBean founderSign_HeSigned) {
+        this.founderSign_HeSigned = founderSign_HeSigned;
     }
 }

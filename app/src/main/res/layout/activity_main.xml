@@ -92,7 +92,6 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:fitsSystemWindows="true"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/tab"
         app:layout_constraintTop_toBottomOf="@+id/cardsShell">

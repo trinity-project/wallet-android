@@ -42,6 +42,9 @@ import com.google.zxing.integration.android.IntentResult;
 
 import org.trinity.util.HexUtil;
 import org.trinity.util.NeoSignUtil;
+import org.trinity.util.PaymentCodeUtil;
+import org.trinity.util.PrefixUtil;
+import org.trinity.util.TNAPUtil;
 import org.trinity.util.WebSocketMessageTypeUtil;
 import org.trinity.util.algorithm.UUIDUtil;
 import org.trinity.util.android.QRCodeUtil;
@@ -51,6 +54,7 @@ import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.entity.ChannelBean;
+import org.trinity.wallet.entity.PaymentCodeBean;
 import org.trinity.wallet.entity.RecordBean;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
@@ -62,6 +66,8 @@ import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
 import org.trinity.wallet.net.websocket.ACFounderBean;
 import org.trinity.wallet.net.websocket.ACFounderSignBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
+import org.trinity.wallet.net.websocket.ACRsmcBean;
+import org.trinity.wallet.net.websocket.ACRsmcSignBean;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -85,7 +91,7 @@ public class MainActivity extends BaseActivity {
      * The activity object.
      */
     @SuppressLint("StaticFieldLeak")
-    public static MainActivity instance;
+    protected static MainActivity instance;
     /**
      * The frame of a single card view.
      */
@@ -223,10 +229,6 @@ public class MainActivity extends BaseActivity {
      */
     private List<Map<String, RecordBean>> recordListInActivity;
     /**
-     * The lock for post requests witch gets balance.
-     */
-    private transient int retryTimesNow = 0;
-    /**
      * Json util.
      */
     private Gson gson;
@@ -279,31 +281,30 @@ public class MainActivity extends BaseActivity {
             initUserIdentityVerify(true);
             return;
         }
-
-        IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (intentResult != null) {
-            if (intentResult.getContents() == null) {
-                ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
-            } else {
-                String scanResult = intentResult.getContents().trim();
-                if (scanResult.contains("@") || scanResult.contains(":")) {
-                    inputTNAP.setText(scanResult);
-                    tab.setSelectedItemId(R.id.navigationAddChannel);
-                    postGetBalance();
-                    refreshChannelListUI();
-                    refreshRecordUI();
+        if (resultCode == ConfigList.SCAN_RESULT) {
+            IntentResult intentResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+            if (intentResult != null) {
+                if (intentResult.getContents() == null) {
+                    ToastUtil.show(getBaseContext(), "QR code result empty, please make sure.");
+                } else {
+                    String scanResult = intentResult.getContents().trim();
+                    if (scanResult.contains("@") || scanResult.contains(".") || scanResult.contains(":")) {
+                        inputTNAP.setText(scanResult);
+                        tab.setSelectedItemId(R.id.navigationAddChannel);
+                        postGetBalance();
+                        refreshUITotal();
+                    }
+                    // If the length of QR result is bigger than neo address(payment code always longer)
+                    // and starts with "A" or "TN".
+                    else if (scanResult.length() >= ConfigList.NEO_ADDRESS_LENGTH && (ConfigList.NEO_ADDRESS_FIRST.equals(scanResult.substring(0, 1)) || ConfigList.PAYMENT_CODE_FIRST.equals(scanResult.substring(0, 2)))) {
+                        inputTransferTo.setText(scanResult);
+                        tab.setSelectedItemId(R.id.navigationTransfer);
+                        verifyAddress(false);
+                    }
                 }
-                // If the length of QR result is bigger than neo address(payment code always longer)
-                // and starts with "A" or "TN".
-                else if (scanResult.length() >= ConfigList.NEO_ADDRESS_LENGTH && (ConfigList.NEO_ADDRESS_FIRST.equals(scanResult.substring(0, 1)) || ConfigList.PAYMENT_CODE_FIRST.equals(scanResult.substring(0, 2)))) {
-                    inputTransferTo.setText(scanResult);
-                    tab.setSelectedItemId(R.id.navigationTransfer);
-                    verifyAddress(false);
-                }
+                return;
             }
-            return;
         }
-
         postGetBalance();
         refreshUITotal();
     }
@@ -857,11 +858,12 @@ public class MainActivity extends BaseActivity {
         runOffUiThread(service);
     }
 
+    // TODO Split the verify and transfer function. Just verify whether it is an address or a payment code, then distribute the neo pay trinity node pay or error checked result.
     private synchronized void verifyAddress(final boolean doPay) {
         inputTransferTo.setError(null);
         inputAmount.setError(null);
 
-        // Wallet
+        // Wallet.
         final Wallet wallet = wApp.getWallet();
 
         if (doPay && layAmount.getVisibility() == View.GONE) {
@@ -873,8 +875,8 @@ public class MainActivity extends BaseActivity {
         }
         postGetBalance();
 
-        final String toAddressStr = inputTransferTo.getText().toString().trim();
-        if ("".equals(toAddressStr) || wallet.getAddress().equals(toAddressStr)) {
+        final String toAddressTrim = inputTransferTo.getText().toString().trim();
+        if ("".equals(toAddressTrim) || wallet.getAddress().equals(toAddressTrim)) {
             if (doPay) {
                 // Invalid text error.
                 inputTransferTo.setError("Invalid input.");
@@ -884,7 +886,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        boolean isLooksLikeAnAddress = inputTransferTo.length() == ConfigList.NEO_ADDRESS_LENGTH && ConfigList.NEO_ADDRESS_FIRST.equals(toAddressStr.substring(0, 1));
+        boolean isLooksLikeAnAddress = inputTransferTo.length() == ConfigList.NEO_ADDRESS_LENGTH && ConfigList.NEO_ADDRESS_FIRST.equals(toAddressTrim.substring(0, 1));
 
         if (!isLooksLikeAnAddress) {
             payCodeMode(doPay);
@@ -898,8 +900,8 @@ public class MainActivity extends BaseActivity {
                 JSONRpcClient client = new JSONRpcClient.Builder()
                         .net(WalletApplication.getNetUrlForNEO())
                         .method("validateaddress")
-                        .params(toAddressStr)
-                        .id(toAddressStr + UUIDUtil.getRandomLowerNoLine())
+                        .params(toAddressTrim)
+                        .id(toAddressTrim + UUIDUtil.getRandomLowerNoLine())
                         .build();
                 final String response = client.post();
 
@@ -936,7 +938,7 @@ public class MainActivity extends BaseActivity {
                         }
 
                         if (doPay) {
-                            addressMode(toAddressStr);
+                            addressMode(toAddressTrim);
                         }
                     }
                 });
@@ -1019,21 +1021,159 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        final boolean payCodeSuccess = false;
+        final Boolean isValidPayCode = attemptRTransaction();
         // TODO try payment code.
-//        new JSONRpcClient.Builder()
-//                .net(wApp.getNetUrl())
-//                .method("GetRSMCMessage")
-//                .params()
 
-        if (!payCodeSuccess) {
-            // All invalid.
-
-            // Invalid text error.
+        if (isValidPayCode != null && !isValidPayCode) {
             inputTransferTo.setError("Invalid input.");
             inputTransferTo.requestFocus();
-
         }
+    }
+
+    private Boolean attemptRTransaction() {
+        final Wallet wallet = wApp.getWallet();
+        if (wallet == null) {
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + ".");
+            return null;
+        }
+        String toAddress = inputTransferTo.getText().toString();
+        final String paymentCodeTrim = toAddress.trim();
+        final PaymentCodeBean paymentCodeBean = PaymentCodeUtil.decode(paymentCodeTrim);
+        if (paymentCodeBean == null) {
+            return false;
+        }
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        String net = wApp.getNet();
+        if (channelList == null) {
+            ToastUtil.show(getBaseContext(), "Please add a channel.");
+            return null;
+        }
+        ChannelBean channelBean = null;
+        ChannelBean channelBeanFor;
+        final String sTNAP = paymentCodeBean.getsTNAP();
+        if (!TNAPUtil.isValid(sTNAP)) {
+            inputTransferTo.setError("Invalid input.");
+            inputTransferTo.requestFocus();
+            return false;
+        }
+        final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
+
+        for (Map<String, ChannelBean> channelBeanWithNetType : channelList) {
+            Iterator<String> keySetIterator = channelBeanWithNetType.keySet().iterator();
+            if (keySetIterator.hasNext() && net.equals(keySetIterator.next())) {
+                channelBeanFor = channelBeanWithNetType.get(net);
+                if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(ConfigList.ASSET_ID_MAP.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
+                    channelBean = channelBeanFor;
+                    break;
+                }
+            }
+        }
+        if (channelBean == null) {
+            ToastUtil.show(getBaseContext(), "Please add a channel.");
+            return null;
+        }
+        channelBean.setTxNonce(channelBean.getTxNonce() + 1);
+        final ChannelBean channelBeanFinal = channelBean;
+        Runnable service = new Runnable() {
+            private JSONRpcClient rpc_1;
+            private FunderTransactionBean resp_2;
+            private ACRsmcBean req_3;
+            private ACRsmcSignBean resp_4;
+            private ACRsmcBean resp_5;
+            private ACRsmcSignBean req_6;
+            private ACRsmcBean req_7;
+            private ACRsmcBean resp_8;
+
+            @Override
+            public void run() {
+                rpc_1 = new JSONRpcClient.Builder()
+                        .net(WalletApplication.getNetUrl())
+                        .method("FunderTransaction")
+                        .params(TNAPUtil.getPublicKey(paymentCodeBean.getsTNAP()),
+                                HexUtil.byteArrayToHex(wallet.getPublicKey()),
+                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                String.valueOf(channelBeanFinal.getBalance()),
+                                String.valueOf(channelBeanFinal.getDeposit() + channelBeanFinal.getDeposit() - channelBeanFinal.getBalance()),
+                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
+                                channelBeanFinal.getAssetName())
+                        .id(channelBeanFinal.getName() + channelBeanFinal.getTxNonce())
+                        .build();
+
+                String json_2 = rpc_1.post();
+
+                if (json_2 == null) {
+                    return;
+                }
+
+                resp_2 = gson.fromJson(json_2, FunderTransactionBean.class);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                                .url(TNAPUtil.getWs(sTNAPSpv))
+                                .build();
+                        webSocketClient.connect(new WebSocketListener() {
+                            @Override
+                            public void onOpen(final WebSocket webSocket, Response response) {
+                                super.onOpen(webSocket, response);
+                                runOffUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        req_3 = new ACRsmcBean();
+                                        req_3.setSender(sTNAPSpv);
+                                        req_3.setReceiver(sTNAP);
+                                        req_3.setTxNonce(channelBeanFinal.getTxNonce());
+                                        ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
+                                        messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
+                                        messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
+                                        messageBody_3.setAssetType(channelBeanFinal.getAssetName());
+                                        messageBody_3.setValue(paymentCodeBean.getPrice());
+                                        messageBody_3.setRoleIndex(0);
+                                        messageBody_3.setComments(paymentCodeBean.getComment());
+                                        req_3.setMessageBody(messageBody_3);
+
+                                        String send_3 = gson.toJson(req_3);
+                                        webSocket.send(send_3);
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void onMessage(final WebSocket webSocket, final String text) {
+                                super.onMessage(webSocket, text);
+                                runOffUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
+                                        if ("".equals(messageTypeStr)) {
+
+                                        }
+                                        if ("RsmcSign".equals(messageTypeStr)) {
+                                            resp_4 = gson.fromJson(text, ACRsmcSignBean.class);
+                                        }
+                                        if ("Rsmc".equals(messageTypeStr)) {
+// case BR empty to r5.
+// case BR no empty(r5 not null) then to r8.
+                                        }
+                                    }
+                                });
+                            }
+
+                            @Override
+                            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                                super.onFailure(webSocket, t, response);
+                            }
+                        });
+                    }
+                });
+            }
+        };
+        runOffUiThread(service);
+
+        // TODO the other one's public key to address.
+        return true;
     }
 
     // TODO Inline the address transfer procedure, or some others, just like what the add channel method do.
@@ -1163,32 +1303,12 @@ public class MainActivity extends BaseActivity {
 
         // Check the TNAP input.
         final String sTNAPTrim = inputTNAP.getText().toString().toLowerCase().trim();
-
-        if ("".equals(sTNAPTrim) || !sTNAPTrim.contains("@")) {
+        if (!TNAPUtil.isValid(sTNAPTrim)) {
             inputTNAP.setError("Invalid input.");
             inputTNAP.requestFocus();
             return;
         }
-        String[] sTNAPSplit = sTNAPTrim.split("@");
-        if (sTNAPSplit.length != 2) {
-            inputTNAP.setError("Invalid input.");
-            inputTNAP.requestFocus();
-            return;
-        }
-
-        final String sTNAP_PublicKey = sTNAPSplit[0];
-        String sTNAP_IpPort = sTNAPSplit[1];
-        String sTNAP_IpPort8766 = sTNAP_IpPort.split(":")[0] + ":8766";
-        if (!sTNAP_PublicKey.matches("[0-9a-f]{66}")) {
-            inputTNAP.setError("Invalid input.");
-            inputTNAP.requestFocus();
-            return;
-        }
-        if (!sTNAP_IpPort.matches(ConfigList.REGEX_IP_PORT)) {
-            inputTNAP.setError("Invalid input.");
-            inputTNAP.requestFocus();
-            return;
-        }
+        final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAPTrim, wallet);
 
         final String net = wApp.getNet();
         ChannelBean channelBean;
@@ -1198,7 +1318,8 @@ public class MainActivity extends BaseActivity {
                 for (String channelListNet : channelBeanWithNetType.keySet()) {
                     channelBean = channelBeanWithNetType.get(channelListNet);
                     if (net.equals(channelListNet) && sTNAPTrim.equals(channelBean.getTNAP())) {
-                        inputTNAP.setError("Already have a known channel on this gateway.");
+                        inputTNAP.setError("Already have one channel on this trinity node.");
+                        inputTNAP.requestFocus();
                         return;
                     }
                 }
@@ -1284,23 +1405,21 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        final String sTNAP8766 = (publicKeyHex + "@" + sTNAP_IpPort8766).toLowerCase();
-
         ToastUtil.show(getBaseContext(), "Doing add channel.\nIt takes a very short time.");
 
         final WebSocketClient webSocketClient = new WebSocketClient.Builder()
-                .url("ws://" + sTNAP_IpPort8766)
+                .url(TNAPUtil.getWs(sTNAPSpv))
                 .build();
 
         webSocketClient.connect(new WebSocketListener() {
             private ACRegisterChannelBean req_1;
             private ACFounderBean resp_2;
             private ACFounderSignBean req_3;
-            private JSONRpcClient client_4;
+            private JSONRpcClient rpc_4;
             private FunderTransactionBean resp_5;
             private ACFounderBean req_6;
             private ACFounderSignBean resp_7;
-            private JSONRpcClient client_8;
+            private JSONRpcClient rpc_8;
             private SendrawtransactionBean resp_9;
 
             @Override
@@ -1310,7 +1429,7 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         req_1 = new ACRegisterChannelBean();
-                        req_1.setSender(sTNAP8766);
+                        req_1.setSender(sTNAPSpv);
                         req_1.setReceiver(sTNAPTrim);
                         req_1.setMagic(WalletApplication.getMagic());
                         req_1.setChannelName(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine());
@@ -1343,7 +1462,7 @@ public class MainActivity extends BaseActivity {
                         if ("Founder".equals(messageTypeStr)) {
                             resp_2 = gson.fromJson(text, ACFounderBean.class);
                             req_3 = new ACFounderSignBean();
-                            req_3.setSender(sTNAP8766);
+                            req_3.setSender(sTNAPSpv);
                             req_3.setReceiver(sTNAPTrim);
                             req_3.setChannelName(resp_2.getChannelName());
                             req_3.setTxNonce(resp_2.getTxNonce());
@@ -1367,11 +1486,11 @@ public class MainActivity extends BaseActivity {
                             String send3 = gson.toJson(req_3);
                             webSocket.send(send3);
 
-                            client_4 = new JSONRpcClient.Builder()
+                            rpc_4 = new JSONRpcClient.Builder()
                                     .net(WalletApplication.getNetUrl())
                                     .method("FunderTransaction")
-                                    .params(publicKeyHex,
-                                            sTNAP_PublicKey,
+                                    .params(TNAPUtil.getPublicKey(sTNAPTrim),
+                                            publicKeyHex,
                                             resp_2.getMessageBody().getFounder().getAddressFunding(),
                                             resp_2.getMessageBody().getFounder().getScriptFunding(),
                                             String.valueOf(resp_2.getMessageBody().getDeposit()),
@@ -1381,7 +1500,7 @@ public class MainActivity extends BaseActivity {
                                     .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
                                     .build();
 
-                            String json_5 = client_4.post();
+                            String json_5 = rpc_4.post();
                             if (json_5 == null) {
                                 webSocket.cancel();
                                 return;
@@ -1390,7 +1509,7 @@ public class MainActivity extends BaseActivity {
 
                             req_6 = new ACFounderBean();
                             req_6.setChannelName(resp_2.getChannelName());
-                            req_6.setSender(sTNAP8766);
+                            req_6.setSender(sTNAPSpv);
                             req_6.setReceiver(sTNAPTrim);
                             req_6.setTxNonce(resp_2.getTxNonce());
                             ACFounderBean.MessageBodyBean messageBody4 = new ACFounderBean.MessageBodyBean();
@@ -1409,14 +1528,14 @@ public class MainActivity extends BaseActivity {
 
                         if ("FounderSign".equals(messageTypeStr)) {
                             resp_7 = gson.fromJson(text, ACFounderSignBean.class);
-                            client_8 = new JSONRpcClient.Builder()
+                            rpc_8 = new JSONRpcClient.Builder()
                                     .net(WalletApplication.getNetUrlForNEO())
                                     .method("sendrawtransaction")
                                     .params(resp_7.getMessageBody().getFounder().getOriginalData().getTxData() + resp_7.getMessageBody().getFounder().getOriginalData().getWitness().replace("{signOther}", resp_7.getMessageBody().getFounder().getTxDataSign()).replace("{signSelf}", req_3.getMessageBody().getFounder().getTxDataSign()))
                                     .id(wallet.getAddress() + UUIDUtil.getRandomLowerNoLine())
                                     .build();
 
-                            String json_9 = client_8.post();
+                            String json_9 = rpc_8.post();
                             if (json_9 == null) {
                                 webSocket.cancel();
                                 return;
@@ -1428,10 +1547,15 @@ public class MainActivity extends BaseActivity {
                             if (addChannelResultFirst) {
                                 final ChannelBean channelBean = new ChannelBean(
                                         resp_7.getChannelName(),
-                                        sTNAPTrim, resp_7.getTxNonce(),
-                                        aliasTrim, resp_7.getMessageBody().getDeposit(),
+                                        sTNAPTrim,
+                                        resp_7.getTxNonce(),
+                                        aliasTrim,
+                                        resp_7.getMessageBody().getDeposit(),
+                                        resp_7.getMessageBody().getDeposit(),
                                         resp_7.getMessageBody().getAssetType(),
-                                        ConfigList.CHANNEL_STATUS_CLEAR);
+                                        ConfigList.CHANNEL_STATUS_CLEAR,
+                                        req_3,
+                                        resp_7);
                                 Map<String, ChannelBean> channelBeanWithNetType = new HashMap<>();
                                 channelBeanWithNetType.put(net, channelBean);
                                 List<Map<String, ChannelBean>> wAppChannelList = wApp.getChannelList();
@@ -1450,7 +1574,7 @@ public class MainActivity extends BaseActivity {
                                                 inputDeposit.setText(null);
                                                 inputAlias.setText(null);
                                                 btnAddChannel.setClickable(true);
-                                                ToastUtil.show(getBaseContext(), "Channel " + aliasTrim + " add success.");
+                                                ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" found.");
                                             }
                                         }
                                 );

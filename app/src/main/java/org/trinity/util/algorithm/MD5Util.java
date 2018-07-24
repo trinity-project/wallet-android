@@ -1,6 +1,6 @@
 package org.trinity.util.algorithm;
 
-import org.trinity.util.HexUtil;
+import org.trinity.util.convert.HexUtil;
 
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;

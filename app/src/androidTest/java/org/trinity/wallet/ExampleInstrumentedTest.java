@@ -10,11 +10,11 @@ import com.google.gson.GsonBuilder;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.trinity.util.HexUtil;
-import org.trinity.util.NeoSignUtil;
-import org.trinity.util.WebSocketMessageTypeUtil;
 import org.trinity.util.algorithm.Base58Util;
 import org.trinity.util.algorithm.UUIDUtil;
+import org.trinity.util.convert.HexUtil;
+import org.trinity.util.convert.NeoSignUtil;
+import org.trinity.util.net.WebSocketMessageTypeUtil;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;

@@ -2,7 +2,6 @@ package org.trinity.wallet.activity;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -23,7 +22,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -37,21 +35,22 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
-import org.trinity.util.BigDecimalUtil;
-import org.trinity.util.HexUtil;
-import org.trinity.util.NeoSignUtil;
-import org.trinity.util.PaymentCodeUtil;
-import org.trinity.util.PrefixUtil;
-import org.trinity.util.TNAPUtil;
-import org.trinity.util.WebSocketMessageTypeUtil;
 import org.trinity.util.algorithm.UUIDUtil;
+import org.trinity.util.android.IMEUtil;
 import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.android.ToastUtil;
 import org.trinity.util.android.UIStringUtil;
+import org.trinity.util.convert.BigDecimalUtil;
+import org.trinity.util.convert.HexUtil;
+import org.trinity.util.convert.NeoSignUtil;
+import org.trinity.util.convert.PaymentCodeUtil;
+import org.trinity.util.convert.PrefixUtil;
+import org.trinity.util.convert.TNAPUtil;
+import org.trinity.util.net.JSONObjectUtil;
+import org.trinity.util.net.WebSocketMessageTypeUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
@@ -223,17 +222,13 @@ public class MainActivity extends BaseActivity {
     @BindView(R.id.mainContainer)
     ConstraintLayout mainContainer;
     /**
-     * Use this to know channel needs to be re drawn.
-     */
-    private List<Map<String, ChannelBean>> channelListInActivity;
-    /**
-     * Use this to know record needs to be re drawn.
-     */
-    private List<Map<String, RecordBean>> recordListInActivity;
-    /**
      * Json util.
      */
     private Gson gson;
+    /**
+     * Last post happen time.
+     */
+    private long lastPostTimeMillis;
 
     /* ---------------------------------- ANDROID LIFE CYCLES ---------------------------------- */
 
@@ -260,27 +255,22 @@ public class MainActivity extends BaseActivity {
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == ConfigList.BACK_RESULT) {
-            refreshCardUI();
-            postGetBalance();
-            refreshChannelListUI();
+            obtainBalance();
             return;
         }
         if (resultCode == ConfigList.SIGN_IN_RESULT) {
-            refreshCardUI();
-            refreshChannelListUI();
-            refreshRecordUI();
+            refreshUITotal();
             ToastUtil.show(getBaseContext(), "Connecting block chain.\nYour balance will show in a few seconds.");
-            postGetBalance();
+            obtainBalance();
             return;
         }
         if (resultCode == ConfigList.SIGN_OUT_RESULT) {
-            refreshCardUI();
-            refreshChannelListUI();
-            refreshRecordUI();
+            refreshUITotal();
             return;
         }
         if (resultCode == ConfigList.CHANGE_PASSWORD_RESULT) {
             initUserIdentityVerify(true);
+            obtainBalance();
             return;
         }
         if (resultCode == ConfigList.SCAN_RESULT) {
@@ -293,8 +283,6 @@ public class MainActivity extends BaseActivity {
                     if (scanResult.contains("@") || scanResult.contains(".") || scanResult.contains(":")) {
                         inputTNAP.setText(scanResult);
                         tab.setSelectedItemId(R.id.navigationAddChannel);
-                        postGetBalance();
-                        refreshUITotal();
                     }
                     // If the length of QR result is bigger than neo address(payment code always longer)
                     // and starts with "A" or "TN".
@@ -303,12 +291,12 @@ public class MainActivity extends BaseActivity {
                         tab.setSelectedItemId(R.id.navigationTransfer);
                         verifyAddress(false);
                     }
+                    obtainBalance();
                 }
                 return;
             }
         }
-        postGetBalance();
-        refreshUITotal();
+        obtainBalance();
     }
 
     /* ---------------------------------- INIT METHODS ---------------------------------- */
@@ -393,7 +381,7 @@ public class MainActivity extends BaseActivity {
 
     private void userIdentityCreate(final EditText inputUserVerify, final EditText inputUserVerifySure) {
         btnUserVerify.setClickable(false);
-        verifyIdentityHideIME();
+        IMEUtil.hideIME(btnUserVerify);
 
         inputUserVerify.setError(null);
         inputUserVerifySure.setError(null);
@@ -437,7 +425,8 @@ public class MainActivity extends BaseActivity {
 
     private void userIdentityVerify(final EditText inputUserVerify) {
         ToastUtil.show(getBaseContext(), "Verifying.");
-        verifyIdentityHideIME();
+        IMEUtil.hideIME(btnUserVerify);
+
         inputUserVerify.setError(null);
         final String password = inputUserVerify.getText().toString();
         int inLen = password.length();
@@ -474,13 +463,6 @@ public class MainActivity extends BaseActivity {
         runOffUiThread(service);
     }
 
-    private void verifyIdentityHideIME() {
-        InputMethodManager imm = (InputMethodManager) btnUserVerify.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null && imm.isActive()) {
-            imm.hideSoftInputFromWindow(btnUserVerify.getApplicationWindowToken(), 0);
-        }
-    }
-
     private void endIdentityVerify() {
         // Load the wallet via user password.
         wApp.loadGlobal();
@@ -505,9 +487,7 @@ public class MainActivity extends BaseActivity {
         netState.setText(getString(R.string.net_state, wApp.getNet().toUpperCase(Locale.getDefault())));
 
         // Init account data.
-        postGetBalance();
-        refreshChannelListUI();
-        refreshRecordUI();
+        obtainBalance();
     }
 
     private void initToolbarMenu() {
@@ -542,7 +522,7 @@ public class MainActivity extends BaseActivity {
                         wApp.switchNet(ConfigList.NET_TYPE_MAIN);
                         ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                         netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
-                        postGetBalance();
+                        obtainBalance();
                         refreshChannelListUI();
                         refreshRecordUI();
                         break;
@@ -550,7 +530,7 @@ public class MainActivity extends BaseActivity {
                         wApp.switchNet(ConfigList.NET_TYPE_TEST);
                         ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                         netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
-                        postGetBalance();
+                        obtainBalance();
                         refreshChannelListUI();
                         refreshRecordUI();
                         break;
@@ -578,8 +558,7 @@ public class MainActivity extends BaseActivity {
         cardContainer.setOnScrollChangeListener(new View.OnScrollChangeListener() {
             @Override
             public void onScrollChange(View view, int i, int i1, int i2, int i3) {
-                refreshCardUI();
-                postGetBalance();
+                obtainBalance();
             }
         });
     }
@@ -643,7 +622,7 @@ public class MainActivity extends BaseActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        attemptAddChannel();
+                        attemptSetupChannel();
                     }
                 }
         );
@@ -661,25 +640,32 @@ public class MainActivity extends BaseActivity {
 
         // This is tab bar.
         tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            private void tabsGone() {
+                tabTransfer.setVisibility(View.GONE);
+                tabAddChannel.setVisibility(View.GONE);
+                tabChannelList.setVisibility(View.GONE);
+                tabRecord.setVisibility(View.GONE);
+            }
+
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
                 tabsGone();
                 switch (menuItem.getItemId()) {
                     case R.id.navigationTransfer:
                         tabTransfer.setVisibility(View.VISIBLE);
-                        postGetBalance();
+                        obtainBalance();
                         return true;
                     case R.id.navigationAddChannel:
                         tabAddChannel.setVisibility(View.VISIBLE);
-                        postGetBalance();
+                        obtainBalance();
                         return true;
                     case R.id.navigationChannelList:
                         tabChannelList.setVisibility(View.VISIBLE);
-                        postGetBalance();
+                        obtainBalance();
                         return true;
                     case R.id.navigationRecord:
                         tabRecord.setVisibility(View.VISIBLE);
-                        postGetBalance();
+                        obtainBalance();
                         return true;
                 }
                 return false;
@@ -688,16 +674,8 @@ public class MainActivity extends BaseActivity {
         tabTransfer.setVisibility(View.VISIBLE);
     }
 
-    private void tabsGone() {
-        tabTransfer.setVisibility(View.GONE);
-        tabAddChannel.setVisibility(View.GONE);
-        tabChannelList.setVisibility(View.GONE);
-        tabRecord.setVisibility(View.GONE);
-    }
-
     /* ---------------------------------- UI THREAD METHODS ---------------------------------- */
 
-    // TODO Spread the refreshUITotal() api.
     private synchronized void refreshUITotal() {
         refreshCardUI();
         refreshChannelListUI();
@@ -756,18 +734,15 @@ public class MainActivity extends BaseActivity {
         }
 
         if (channelList == null) {
-            channelListInActivity = null;
             channelListEmpty.setVisibility(View.VISIBLE);
             return;
         }
 
-        channelListInActivity = channelList;
-
         ChannelBean channelBean;
         int nowNetChannelCount = 0;
         channelListEmpty.setVisibility(View.GONE);
-        for (int index = channelListInActivity.size() - 1; index >= 0; index--) {
-            Map<String, ChannelBean> channelBeanWithType = channelListInActivity.get(index);
+        for (int index = channelList.size() - 1; index >= 0; index--) {
+            Map<String, ChannelBean> channelBeanWithType = channelList.get(index);
             Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
             if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
                 nowNetChannelCount++;
@@ -791,18 +766,15 @@ public class MainActivity extends BaseActivity {
         }
 
         if (recordList == null) {
-            recordListInActivity = null;
             recordEmpty.setVisibility(View.VISIBLE);
             return;
         }
 
-        recordListInActivity = recordList;
-
         RecordBean recordBean;
         int nowNetRecordCount = 0;
         recordEmpty.setVisibility(View.GONE);
-        for (int index = recordListInActivity.size() - 1; index >= 0; index--) {
-            Map<String, RecordBean> recordBeanWithType = recordListInActivity.get(index);
+        for (int index = recordList.size() - 1; index >= 0; index--) {
+            Map<String, RecordBean> recordBeanWithType = recordList.get(index);
             Iterator<String> typeIterator = recordBeanWithType.keySet().iterator();
             if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
                 nowNetRecordCount++;
@@ -850,12 +822,14 @@ public class MainActivity extends BaseActivity {
         recordEmpty.setVisibility(View.GONE);
     }
 
-
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
 
-    // TODO Post get balance should not happen twice in 0.2 seconds.
-    // TODO Always decoupling the i/o and UI works. Such as postGetBalance() should not have a refreshUITotal() in it, refreshUITotal() is called by postGetBalance()'s father method.
-    private synchronized void postGetBalance() {
+    // TODO Connect all the channels for current net in list.
+    private void connectChannels() {
+
+    }
+
+    private synchronized void obtainBalance() {
         final Wallet wallet = wApp.getWallet();
 
         if (wallet == null) {
@@ -872,63 +846,75 @@ public class MainActivity extends BaseActivity {
                         .id("1")
                         .build();
                 final String response = client.post();
+
+                if (response == null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                        }
+                    });
+                    return;
+                }
+                GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
+                // On chain value.
+                wApp.setChainTNC(Double.valueOf(responseBean.getResult().getTncBalance()));
+                wApp.setChainNEO(Double.valueOf(responseBean.getResult().getNeoBalance()));
+                wApp.setChainGAS(Double.valueOf(responseBean.getResult().getGasBalance()));
+                // On channel value.
+                List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+                if (channelList != null) {
+                    double chainTNC = 0;
+                    double chainNEO = 0;
+                    double chainGAS = 0;
+                    String net = wApp.getNet();
+                    String assetName;
+                    ChannelBean channelBean;
+                    for (Map<String, ChannelBean> channelBeanWithType : channelList) {
+                        Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                        if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                            channelBean = channelBeanWithType.get(net);
+                            assetName = channelBean.getAssetName();
+                            switch (assetName) {
+                                case ConfigList.ASSET_ID_MAP_KEY_TNC:
+                                    chainTNC += channelBean.getBalance();
+                                    break;
+                                case ConfigList.ASSET_ID_MAP_KEY_NEO:
+                                    chainNEO += channelBean.getBalance();
+                                    break;
+                                case ConfigList.ASSET_ID_MAP_KEY_GAS:
+                                    chainGAS += channelBean.getBalance();
+                                    break;
+                            }
+                        }
+                    }
+                    wApp.setChannelTNC(chainTNC);
+                    wApp.setChannelNEO(chainNEO);
+                    wApp.setChannelGAS(chainGAS);
+                }
                 runOnUiThread(new Runnable() {
-                                  @Override
-                                  public void run() {
-                                      if (response == null) {
-                                          ToastUtil.show(getBaseContext(), "Implicit problem happened.");
-                                          return;
-                                      }
-                                      GetBalanceBean responseBean = gson.fromJson(response, GetBalanceBean.class);
-                                      // On chain value.
-                                      wApp.setChainTNC(Double.valueOf(responseBean.getResult().getTncBalance()));
-                                      wApp.setChainNEO(Double.valueOf(responseBean.getResult().getNeoBalance()));
-                                      wApp.setChainGAS(Double.valueOf(responseBean.getResult().getGasBalance()));
-                                      // On channel value.
-                                      List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-                                      if (channelList != null) {
-                                          double chainTNC = 0;
-                                          double chainNEO = 0;
-                                          double chainGAS = 0;
-                                          String net = wApp.getNet();
-                                          String assetName;
-                                          ChannelBean channelBean;
-                                          for (Map<String, ChannelBean> channelBeanWithType : channelList) {
-                                              Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
-                                              if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
-                                                  channelBean = channelBeanWithType.get(net);
-                                                  assetName = channelBean.getAssetName();
-                                                  switch (assetName) {
-                                                      case ConfigList.ASSET_ID_MAP_KEY_TNC:
-                                                          chainTNC += channelBean.getBalance();
-                                                          break;
-                                                      case ConfigList.ASSET_ID_MAP_KEY_NEO:
-                                                          chainNEO += channelBean.getBalance();
-                                                          break;
-                                                      case ConfigList.ASSET_ID_MAP_KEY_GAS:
-                                                          chainGAS += channelBean.getBalance();
-                                                          break;
-                                                  }
-                                              }
-                                          }
-                                          wApp.setChannelTNC(chainTNC);
-                                          wApp.setChannelNEO(chainNEO);
-                                          wApp.setChannelGAS(chainGAS);
-                                      }
-                                      refreshUITotal();
-                                  }
-                              }
-                );
+                    @Override
+                    public void run() {
+                        refreshCardUI();
+                    }
+                });
             }
         };
-        runOffUiThread(service);
+
+        // We have 1000ms in one second on this planet and in current physics tide.
+        double postInfoHowOld = (System.currentTimeMillis() - lastPostTimeMillis) / 1000d;
+        if (postInfoHowOld > ConfigList.POST_TIME_AT_LEAST) {
+            runOffUiThread(service);
+            // Yes, it actually longer than what config list was recorded.
+            // Because post dose have it's own time space.
+            lastPostTimeMillis = System.currentTimeMillis();
+        }
     }
 
-    // TODO Split the verify and transfer function. Just verify whether it is an address or a payment code, then distribute the neo pay trinity node pay or error checked result.
     private synchronized void verifyAddress(final boolean doPay) {
         inputTransferTo.setError(null);
         inputAmount.setError(null);
-        verifyAddressHideIME();
+        IMEUtil.hideIME(btnTransferTo);
 
         // Wallet.
         final Wallet wallet = wApp.getWallet();
@@ -940,7 +926,7 @@ public class MainActivity extends BaseActivity {
                 return;
             }
         }
-        postGetBalance();
+        obtainBalance();
 
         final String toAddressTrim = inputTransferTo.getText().toString().trim();
         if ("".equals(toAddressTrim) || wallet.getAddress().equals(toAddressTrim)) {
@@ -1014,78 +1000,6 @@ public class MainActivity extends BaseActivity {
         runOffUiThread(service);
     }
 
-    private void verifyAddressHideIME() {
-        InputMethodManager imm = (InputMethodManager) btnTransferTo.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null && imm.isActive()) {
-            imm.hideSoftInputFromWindow(btnTransferTo.getApplicationWindowToken(), 0);
-        }
-    }
-
-    private void addressMode(@NonNull String toAddressStr) {
-        final String amountTrim = inputAmount.getText().toString().trim();
-        if ("".equals(amountTrim)) {
-            inputAmount.setError("Please input amount.");
-            inputAmount.requestFocus();
-            return;
-        }
-
-        Double amountDouble = Double.valueOf(amountTrim);
-        if (amountDouble > 10000000000000d) {
-            inputAmount.setError("Deposit at most 10000000000000.");
-            inputAmount.requestFocus();
-            return;
-        }
-
-        int checkedRadioId = inputAssetsTrans.getCheckedRadioButtonId();
-        RadioButton radioChecked = MainActivity.this.findViewById(checkedRadioId);
-        String assetName = radioChecked.getText().toString().trim();
-
-        boolean isCoinInteger = !amountTrim.contains(".");
-        boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
-
-        boolean isCoinAmountOK = false;
-        boolean isAmountAffordable = false;
-
-        BigDecimal amountBigDecimal = BigDecimal.valueOf(amountDouble);
-        if (getString(R.string.tnc).equals(assetName)) {
-            if (isCoinInteger || isCoinDigitsValid) {
-                isCoinAmountOK = true;
-            } else {
-                inputAmount.setError("TNC balance is a decimal up to 8 digits.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainTNC())) <= 0;
-        } else if (getString(R.string.neo).equals(assetName)) {
-            if (isCoinInteger) {
-                isCoinAmountOK = true;
-            } else {
-                inputAmount.setError("NEO balance is a integer.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainNEO())) <= 0;
-        } else if (getString(R.string.gas).equals(assetName)) {
-            if (isCoinInteger || isCoinDigitsValid) {
-                isCoinAmountOK = true;
-            } else {
-                inputAmount.setError("GAS balance is a decimal up to 8 digits.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainGAS())) <= 0;
-        }
-
-        if (!isCoinAmountOK) {
-            inputAmount.requestFocus();
-            return;
-        }
-
-        if (!isAmountAffordable) {
-            inputAmount.setError("Balance of current asset is not enough.");
-            inputAmount.requestFocus();
-            return;
-        }
-
-        ToastUtil.show(getBaseContext(), "Doing addressMode.\nIt takes a very short time.");
-        btnTransferTo.setClickable(false);
-        postConstructTx(toAddressStr, amountTrim, assetName);
-    }
-
     private void payCodeMode(boolean doPay) {
         layAmount.setVisibility(View.GONE);
         labelAssetsTrans.setVisibility(View.GONE);
@@ -1096,7 +1010,6 @@ public class MainActivity extends BaseActivity {
         }
 
         final Boolean isValidPayCode = attemptRTransaction();
-        // TODO try payment code.
 
         if (isValidPayCode != null && !isValidPayCode) {
             inputTransferTo.setError("Invalid input.");
@@ -1104,7 +1017,7 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    // TODO Inverted R transaction.
+    // TODO Inverted R transaction(in another way, receive an R transaction).
     private Boolean attemptRTransaction() {
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -1123,8 +1036,7 @@ public class MainActivity extends BaseActivity {
             ToastUtil.show(getBaseContext(), "Please add a channel.");
             return null;
         }
-        ChannelBean channelBean = null;
-        ChannelBean channelBeanFor;
+
         final String sTNAP = paymentCodeBean.getsTNAP();
         if (!TNAPUtil.isValid(sTNAP)) {
             inputTransferTo.setError("Invalid input.");
@@ -1133,18 +1045,30 @@ public class MainActivity extends BaseActivity {
         }
         final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
 
+        ChannelBean channelBean = null;
+        ChannelBean channelBeanFor;
+        List<ChannelBean> currentNetChannelList = new ArrayList<>();
         for (Map<String, ChannelBean> channelBeanWithNetType : channelList) {
             Iterator<String> keySetIterator = channelBeanWithNetType.keySet().iterator();
             if (keySetIterator.hasNext() && net.equals(keySetIterator.next())) {
                 channelBeanFor = channelBeanWithNetType.get(net);
+                currentNetChannelList.add(channelBeanFor);
                 if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(ConfigList.ASSET_ID_MAP.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
                     channelBean = channelBeanFor;
                     break;
                 }
             }
         }
+
+        if (currentNetChannelList.size() == 0) {
+            return null;
+        }
+
         if (channelBean == null) {
             // TODO H transaction.
+            for (ChannelBean channelH : currentNetChannelList) {
+                channelBean = channelH;
+            }
         }
 
         // TODO channel balance enough.
@@ -1275,18 +1199,14 @@ public class MainActivity extends BaseActivity {
                                                 String send_7 = gson.toJson(req_7);
                                                 webSocket.send(send_7);
                                             }
-                                            // case BR no empty(or r5 not null) save to r8.
-                                            if (resp_5 != null) {
+                                            // case BR no empty save to r8.
+                                            else {
                                                 resp_8 = tmp;
                                             }
                                         }
                                         if ("UpdateChannel".equals(messageTypeStr)) {
-                                            double spvBalance = gson.fromJson(text, JsonObject.class)
-                                                    .getAsJsonObject("MessageBody")
-                                                    .getAsJsonObject("Balance")
-                                                    .getAsJsonObject(sTNAPSpv)
-                                                    .get(channelBeanFinal.getAssetName())
-                                                    .getAsDouble();
+                                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinal.getAssetName());
+
                                             List<Map<String, RecordBean>> recordList = wApp.getRecordList();
                                             if (recordList == null) {
                                                 recordList = new ArrayList<>();
@@ -1298,13 +1218,15 @@ public class MainActivity extends BaseActivity {
                                                     0d,
                                                     resp_4,
                                                     resp_8));
+
                                             recordList.add(recordBeanWithNetType);
                                             channelBeanFinal.setBalance(spvBalance);
+
                                             wApp.setRecordList(recordList);
                                             runOnUiThread(new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    postGetBalance();
+                                                    obtainBalance();
                                                     refreshUITotal();
                                                     inputTransferTo.setText(null);
                                                     inputAmount.setText(null);
@@ -1326,6 +1248,7 @@ public class MainActivity extends BaseActivity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
+                                        btnTransferTo.setClickable(true);
                                         ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                                     }
                                 });
@@ -1335,14 +1258,79 @@ public class MainActivity extends BaseActivity {
                 });
             }
         };
+
+        btnTransferTo.setClickable(false);
         runOffUiThread(service);
 
-        // TODO the other one's public key to address.
         return true;
     }
 
-    // TODO Inline the address transfer procedure, or some others, just like what the add channel method do.
-    private void postConstructTx(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
+    private void addressMode(@NonNull String toAddressStr) {
+        final String amountTrim = inputAmount.getText().toString().trim();
+        if ("".equals(amountTrim)) {
+            inputAmount.setError("Please input amount.");
+            inputAmount.requestFocus();
+            return;
+        }
+
+        Double amountDouble = Double.valueOf(amountTrim);
+        if (amountDouble > 10000000000000d) {
+            inputAmount.setError("Deposit at most 10000000000000.");
+            inputAmount.requestFocus();
+            return;
+        }
+
+        int checkedRadioId = inputAssetsTrans.getCheckedRadioButtonId();
+        RadioButton radioChecked = MainActivity.this.findViewById(checkedRadioId);
+        String assetName = radioChecked.getText().toString().trim();
+
+        boolean isCoinInteger = !amountTrim.contains(".");
+        boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
+
+        boolean isCoinAmountOK = false;
+        boolean isAmountAffordable = false;
+
+        BigDecimal amountBigDecimal = BigDecimal.valueOf(amountDouble);
+        if (getString(R.string.tnc).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("TNC balance is a decimal up to 8 digits.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainTNC())) <= 0;
+        } else if (getString(R.string.neo).equals(assetName)) {
+            if (isCoinInteger) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("NEO balance is a integer.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainNEO())) <= 0;
+        } else if (getString(R.string.gas).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("GAS balance is a decimal up to 8 digits.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainGAS())) <= 0;
+        }
+
+        if (!isCoinAmountOK) {
+            inputAmount.requestFocus();
+            return;
+        }
+
+        if (!isAmountAffordable) {
+            inputAmount.setError("Balance of current asset is not enough.");
+            inputAmount.requestFocus();
+            return;
+        }
+
+        ToastUtil.show(getBaseContext(), "Doing addressMode.\nIt takes a very short time.");
+        btnTransferTo.setClickable(false);
+        attemptTransfer(toAddressStr, amountTrim, assetName);
+    }
+
+    private void attemptTransfer(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
         // Send post to addressMode to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -1362,81 +1350,73 @@ public class MainActivity extends BaseActivity {
             @Override
             public void run() {
                 String myAddress = wallet.getAddress();
-                JSONRpcClient client = new JSONRpcClient.Builder()
+                JSONRpcClient rpc_1 = new JSONRpcClient.Builder()
                         .net(WalletApplication.getNetUrl())
                         .method("constructTx")
                         .params(myAddress, validToAddress, validAmount, ConfigList.ASSET_ID_MAP.get(assetName))
                         .id(validToAddress + validAmount + assetName)
                         .build();
-                final String response = client.post();
+                final String json_2 = rpc_1.post();
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (response == null) {
+                if (json_2 == null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
                             ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
-                            return;
                         }
+                    });
+                    return;
+                }
 
-                        final ConstructTxBean bean = gson.fromJson(response, ConstructTxBean.class);
-                        String txData = bean.getResult().getTxData();
-                        String witness = bean.getResult().getWitness();
-                        String txid = bean.getResult().getTxid();
-                        if (txData == null || witness == null || txid == null) {
+                final ConstructTxBean resp_2 = gson.fromJson(json_2, ConstructTxBean.class);
+                String txData = resp_2.getResult().getTxData();
+                String witness = resp_2.getResult().getWitness();
+                String txid = resp_2.getResult().getTxid();
+                if (txData == null || witness == null || txid == null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
                             ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             btnTransferTo.setClickable(true);
-                            return;
                         }
-                        postSendrawtransaction(txData, witness, txid);
-                    }
-                });
-            }
-        };
-        runOffUiThread(service);
-    }
+                    });
+                    return;
+                }
 
-    private void postSendrawtransaction(@NonNull final String txData, @NonNull final String witness, @NonNull final String txid) {
-        // Send post to addressMode to address.
-        final Wallet wallet = wApp.getWallet();
-        if (wallet == null) {
-            // Toast please login first.
-            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
-            btnTransferTo.setClickable(true);
-            return;
-        }
-        Runnable service = new Runnable() {
-            @Override
-            public void run() {
                 String sign = NeoSignUtil.signToHex(txData, wallet.getPrivateKey());
                 String publicKeyHex = HexUtil.byteArrayToHex(wallet.getPublicKey());
                 String replacedWitness = witness.replace("{signature}", sign).replace("{pubkey}", publicKeyHex);
-                JSONRpcClient client = new JSONRpcClient.Builder()
+
+                JSONRpcClient rpc_3 = new JSONRpcClient.Builder()
                         .net(WalletApplication.getNetUrlForNEO())
                         .method("sendrawtransaction")
                         .params(txData + replacedWitness)
                         .id(txid)
                         .build();
-                final String response = client.post();
+                String json_4 = rpc_3.post();
 
+                if (json_4 == null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            btnTransferTo.setClickable(true);
+                        }
+                    });
+                    return;
+                }
+
+                final SendrawtransactionBean resp_4 = gson.fromJson(json_4, SendrawtransactionBean.class);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                        if (!resp_4.isResult()) {
                             btnTransferTo.setClickable(true);
+                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
                             return;
                         }
-
-                        SendrawtransactionBean bean = gson.fromJson(response, SendrawtransactionBean.class);
-                        if (!bean.isResult()) {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
-                            btnTransferTo.setClickable(true);
-                            return;
-                        }
-
                         ToastUtil.show(getBaseContext(), "Transfer succeed.\nBlock chain confirms in seconds.");
-                        postGetBalance();
                         btnTransferTo.setClickable(true);
                     }
                 });
@@ -1445,7 +1425,7 @@ public class MainActivity extends BaseActivity {
         runOffUiThread(service);
     }
 
-    private void attemptAddChannel() {
+    private void attemptSetupChannel() {
         inputTNAP.setError(null);
         inputDeposit.setError(null);
         inputAlias.setError(null);
@@ -1458,7 +1438,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        postGetBalance();
+        obtainBalance();
 
         // Check the TNAP input.
         final String sTNAPTrim = inputTNAP.getText().toString().toLowerCase().trim();
@@ -1649,8 +1629,8 @@ public class MainActivity extends BaseActivity {
                             rpc_4 = new JSONRpcClient.Builder()
                                     .net(WalletApplication.getNetUrl())
                                     .method("FunderTransaction")
-                                    .params(TNAPUtil.getPublicKey(sTNAPTrim),
-                                            TNAPUtil.getPublicKey(sTNAPSpv),
+                                    .params(TNAPUtil.getPublicKey(sTNAPSpv),
+                                            TNAPUtil.getPublicKey(sTNAPTrim),
                                             resp_2.getMessageBody().getFounder().getAddressFunding(),
                                             resp_2.getMessageBody().getFounder().getScriptFunding(),
                                             String.valueOf(resp_2.getMessageBody().getDeposit()),
@@ -1733,7 +1713,7 @@ public class MainActivity extends BaseActivity {
                                                 inputDeposit.setText(null);
                                                 inputAlias.setText(null);
                                                 btnAddChannel.setClickable(true);
-                                                ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" found.");
+                                                ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" found.\nNew channel will preheat for a few seconds before it can use.");
                                             }
                                         }
                                 );
@@ -1751,7 +1731,7 @@ public class MainActivity extends BaseActivity {
                         }
                         if ("AddChannel".equals(messageTypeStr)) {
                             channelBeanHeating.setState(ConfigList.CHANNEL_STATUS_CLEAR);
-                            // TODO Sockets always connects when app on.
+                            ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was clear.");
                             webSocket.close(1000, null);
                         }
                     }
@@ -1774,7 +1754,9 @@ public class MainActivity extends BaseActivity {
         });
     }
 
-
+    // TODO Dismantle channel.
+    private void dismantleChannel() {
+    }
 
     /* ---------------------------------- INNER CLASSES ---------------------------------- */
 

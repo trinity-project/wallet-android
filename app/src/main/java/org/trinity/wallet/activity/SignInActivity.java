@@ -14,7 +14,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
-import org.trinity.util.HexUtil;
+import org.trinity.util.convert.HexUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 
@@ -69,7 +69,7 @@ public class SignInActivity extends BaseActivity {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
-                    attemptLogin();
+                    attemptSignIn();
                     return true;
                 }
                 return false;
@@ -81,11 +81,11 @@ public class SignInActivity extends BaseActivity {
         signIn.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
-                attemptLogin();
+                attemptSignIn();
             }
         });
 
-        // Initialize the logout button event.
+        // Initialize the signOut button event.
         Button signOut = findViewById(R.id.btnSignOut);
         signOut.setOnClickListener(new OnClickListener() {
             @Override
@@ -95,7 +95,7 @@ public class SignInActivity extends BaseActivity {
                         .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                logout();
+                                signOut();
                             }
                         })
                         .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -141,7 +141,7 @@ public class SignInActivity extends BaseActivity {
      * If there are form errors (invalid private key, missing fields, etc.), the
      * errors are presented and no actual login attempt is made.
      */
-    private void attemptLogin() {
+    private void attemptSignIn() {
         // Reset errors.
         mPrivateKeyView.setError(null);
 
@@ -174,7 +174,7 @@ public class SignInActivity extends BaseActivity {
     /**
      * Sign out.
      */
-    private void logout() {
+    private void signOut() {
         // Wallet object persistence.
         wApp.signOut();
         // Set the login result.

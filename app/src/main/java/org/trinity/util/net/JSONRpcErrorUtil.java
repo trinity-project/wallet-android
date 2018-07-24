@@ -1,4 +1,4 @@
-package org.trinity.util;
+package org.trinity.util.net;
 
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.jsonrpc.ErrorBean;

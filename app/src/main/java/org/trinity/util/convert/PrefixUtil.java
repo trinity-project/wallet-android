@@ -1,4 +1,4 @@
-package org.trinity.util;
+package org.trinity.util.convert;
 
 public class PrefixUtil {
     public static String addOx(String hex) {

@@ -1,4 +1,4 @@
-package org.trinity.util;
+package org.trinity.util.convert;
 
 import java.math.BigDecimal;
 

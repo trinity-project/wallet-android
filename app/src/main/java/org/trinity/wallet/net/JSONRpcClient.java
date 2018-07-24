@@ -3,8 +3,7 @@ package org.trinity.wallet.net;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
-import org.trinity.util.JSONRpcErrorUtil;
-import org.trinity.util.android.ToastUtil;
+import org.trinity.util.net.JSONRpcErrorUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.net.jsonrpc.RequestJSONRpcBean;

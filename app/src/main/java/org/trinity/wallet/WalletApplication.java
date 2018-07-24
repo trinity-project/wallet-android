@@ -41,6 +41,7 @@ public final class WalletApplication extends Application {
     /**
      * The thread pool.
      */
+    // TODO extend the thread pool.
     private static ExecutorService ioExecutor;
     /**
      * The identity verify.

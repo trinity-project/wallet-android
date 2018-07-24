@@ -24,10 +24,13 @@ public final class ConfigList {
     public static final int SIGN_OUT_RESULT = 2;
     public static final int CHANGE_PASSWORD_RESULT = 3;
     public static final int SCAN_RESULT = -1;
+
+    public static final double POST_TIME_AT_LEAST = 0.2;
     public static final int READ_TIME_OUT = 20;
     public static final int WRITE_TIME_OUT = 20;
     public static final int CONNECT_TIME_OUT = 20;
     public static final String CLIENT_MEDIA_TYPE = "application/json; charset=utf-8";
+
     public static final int NEO_ADDRESS_LENGTH = 34;
     public static final String NEO_ADDRESS_FIRST = "A";
     public static final String PAYMENT_CODE_FIRST = "TN";
@@ -36,7 +39,7 @@ public final class ConfigList {
     public static final int USER_PASSWORD_MIN = 8;
     public static final int USER_PASSWORD_MAX = 16;
     public static final int QR_CODE_WIDTH = 200;
-    public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
+    public static final int QR_CODE_HEIGHT = 200;
     public static final int QR_MARGIN = 1;
     public static final String CHANNEL_STATUS_HEATING = "Heating";
     public static final String CHANNEL_STATUS_CLEAR = "Clear";

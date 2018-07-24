@@ -13,7 +13,6 @@ public class ChannelBean {
     private double balance;
     private String assetName;
     private String state;
-    private ACFounderSignBean founderSign_ISigned;
     private ACFounderSignBean founderSign_HeSigned;
 
     public ChannelBean(@NonNull String name,
@@ -24,7 +23,6 @@ public class ChannelBean {
                        double balance,
                        @NonNull String assetName,
                        @NonNull String state,
-                       @NonNull ACFounderSignBean founderSign_ISigned,
                        @NonNull ACFounderSignBean founderSign_HeSigned) {
         this.name = name;
         this.TNAP = TNAP;
@@ -34,7 +32,6 @@ public class ChannelBean {
         this.balance = balance;
         this.assetName = assetName;
         this.state = state;
-        this.founderSign_ISigned = founderSign_ISigned;
         this.founderSign_HeSigned = founderSign_HeSigned;
     }
 
@@ -100,14 +97,6 @@ public class ChannelBean {
 
     public void setState(String state) {
         this.state = state;
-    }
-
-    public ACFounderSignBean getFounderSign_ISigned() {
-        return founderSign_ISigned;
-    }
-
-    public void setFounderSign_ISigned(ACFounderSignBean founderSign_ISigned) {
-        this.founderSign_ISigned = founderSign_ISigned;
     }
 
     public ACFounderSignBean getFounderSign_HeSigned() {

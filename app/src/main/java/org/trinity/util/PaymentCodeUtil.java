@@ -8,7 +8,12 @@ import org.trinity.wallet.entity.PaymentCodeBean;
 public class PaymentCodeUtil {
     @Nullable
     public static PaymentCodeBean decode(String paymentCode) {
-        byte[] decode = Base58Util.decode(paymentCode.substring(2));
+        byte[] decode;
+        try {
+            decode = Base58Util.decode(paymentCode.substring(2));
+        } catch (Exception e) {
+            return null;
+        }
         String decodeStr = new String(decode);
         String[] split = decodeStr.split("&");
         if (split.length != 5) {

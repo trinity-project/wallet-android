@@ -38,7 +38,10 @@ public final class ConfigList {
     public static final int QR_CODE_WIDTH = 200;
     public static final int QR_CODE_HEIGHT = QR_CODE_WIDTH;
     public static final int QR_MARGIN = 1;
+    public static final String CHANNEL_STATUS_HEATING = "Heating";
     public static final String CHANNEL_STATUS_CLEAR = "Clear";
+    public static final String CHANNEL_STATUS_COOLING = "Cooling";
+    public static final String CHANNEL_STATUS_DISMANTLED = "Dismantled";
     public static final String GATEWAY_SPV_PORT = "8766";
 
 

@@ -9,4 +9,11 @@ public final class UIStringUtil {
         }
         return bigDecimal.toPlainString();
     }
+
+    public static String castDoubleToString(Double mDouble) {
+        if (mDouble == null) {
+            return "-";
+        }
+        return bigDecimalToString(BigDecimal.valueOf(mDouble));
+    }
 }

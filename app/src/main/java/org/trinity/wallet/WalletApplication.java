@@ -13,7 +13,6 @@ import org.trinity.util.android.QRCodeUtil;
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.RecordBean;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -54,12 +53,12 @@ public final class WalletApplication extends Application {
      */
     private transient Wallet wallet;
     private Bitmap addressQR;
-    private volatile BigDecimal chainTNC;
-    private volatile BigDecimal channelTNC;
-    private volatile BigDecimal chainNEO;
-    private volatile BigDecimal channelNEO;
-    private volatile BigDecimal chainGAS;
-    private volatile BigDecimal channelGAS;
+    private volatile Double chainTNC;
+    private volatile Double channelTNC;
+    private volatile Double chainNEO;
+    private volatile Double channelNEO;
+    private volatile Double chainGAS;
+    private volatile Double channelGAS;
     /**
      * Key: Net type. Value: Bean.
      */
@@ -304,51 +303,51 @@ public final class WalletApplication extends Application {
         this.addressQR = addressQR;
     }
 
-    public BigDecimal getChainTNC() {
+    public Double getChainTNC() {
         return chainTNC;
     }
 
-    public void setChainTNC(BigDecimal chainTNC) {
+    public void setChainTNC(Double chainTNC) {
         this.chainTNC = chainTNC;
     }
 
-    public BigDecimal getChannelTNC() {
+    public Double getChannelTNC() {
         return channelTNC;
     }
 
-    public void setChannelTNC(BigDecimal channelTNC) {
+    public void setChannelTNC(Double channelTNC) {
         this.channelTNC = channelTNC;
     }
 
-    public BigDecimal getChainNEO() {
+    public Double getChainNEO() {
         return chainNEO;
     }
 
-    public void setChainNEO(BigDecimal chainNEO) {
+    public void setChainNEO(Double chainNEO) {
         this.chainNEO = chainNEO;
     }
 
-    public BigDecimal getChannelNEO() {
+    public Double getChannelNEO() {
         return channelNEO;
     }
 
-    public void setChannelNEO(BigDecimal channelNEO) {
+    public void setChannelNEO(Double channelNEO) {
         this.channelNEO = channelNEO;
     }
 
-    public BigDecimal getChainGAS() {
+    public Double getChainGAS() {
         return chainGAS;
     }
 
-    public void setChainGAS(BigDecimal chainGAS) {
+    public void setChainGAS(Double chainGAS) {
         this.chainGAS = chainGAS;
     }
 
-    public BigDecimal getChannelGAS() {
+    public Double getChannelGAS() {
         return channelGAS;
     }
 
-    public void setChannelGAS(BigDecimal channelGAS) {
+    public void setChannelGAS(Double channelGAS) {
         this.channelGAS = channelGAS;
     }
 

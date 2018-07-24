@@ -101,6 +101,7 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
 
     @Override
     public void onTorchOn() {
+
         ToastUtil.show(getBaseContext(), "Torch on");
         isLightOn = true;
     }
@@ -120,8 +121,10 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
     public void toggleLight(View view) {
         if (isLightOn) {
             scanPlugin.setTorchOff();
+            view.setBackgroundResource(R.drawable.ic_flash_on_24dp);
         } else {
             scanPlugin.setTorchOn();
+            view.setBackgroundResource(R.drawable.ic_flash_off_24dp);
         }
     }
 

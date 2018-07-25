@@ -53,9 +53,9 @@ import org.trinity.util.net.JSONObjectUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
+import org.trinity.wallet.entity.BillBean;
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.PaymentCodeBean;
-import org.trinity.wallet.entity.RecordBean;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
@@ -127,12 +127,12 @@ public class MainActivity extends BaseActivity {
      */
     @BindView(R.id.tabTransfer)
     ConstraintLayout tabTransfer;
-    @BindView(R.id.tabAddChannel)
-    ConstraintLayout tabAddChannel;
-    @BindView(R.id.tabChannelList)
-    ConstraintLayout tabChannelList;
-    @BindView(R.id.tabRecord)
-    ConstraintLayout tabRecord;
+    @BindView(R.id.tabSetupChannel)
+    ConstraintLayout tabSetupChannel;
+    @BindView(R.id.tabChannel)
+    ConstraintLayout tabChannel;
+    @BindView(R.id.tabBill)
+    ConstraintLayout tabBill;
     /**
      * The butter knife inject components.
      */
@@ -164,8 +164,8 @@ public class MainActivity extends BaseActivity {
     RadioGroup inputAssetsTrans;
     @BindView(R.id.btnTransferTo)
     Button btnTransferTo;
-    @BindView(R.id.titleAddChannel)
-    TextView titleAddChannel;
+    @BindView(R.id.titleSetupChannel)
+    TextView titleSetupChannel;
     @BindView(R.id.inputTNAP)
     EditText inputTNAP;
     @BindView(R.id.layTNAP)
@@ -188,20 +188,20 @@ public class MainActivity extends BaseActivity {
     EditText inputAlias;
     @BindView(R.id.layAlias)
     TextInputLayout layAlias;
-    @BindView(R.id.btnAddChannel)
-    Button btnAddChannel;
-    @BindView(R.id.titleChannelList)
-    TextView titleChannelList;
-    @BindView(R.id.channelListEmpty)
-    TextView channelListEmpty;
+    @BindView(R.id.btnSetupChannel)
+    Button btnSetupChannel;
+    @BindView(R.id.titleChannel)
+    TextView titleChannel;
+    @BindView(R.id.channelEmpty)
+    TextView channelEmpty;
     @BindView(R.id.channelContainer)
     LinearLayout channelContainer;
-    @BindView(R.id.titleRecord)
-    TextView titleRecord;
-    @BindView(R.id.recordEmpty)
-    TextView recordEmpty;
-    @BindView(R.id.recordContainer)
-    LinearLayout recordContainer;
+    @BindView(R.id.titleBill)
+    TextView titleBill;
+    @BindView(R.id.billEmpty)
+    TextView billEmpty;
+    @BindView(R.id.billContainer)
+    LinearLayout billContainer;
     @BindView(R.id.tabsContainer)
     ScrollView tabsContainer;
     @BindView(R.id.titleUserVerify)
@@ -283,7 +283,7 @@ public class MainActivity extends BaseActivity {
                     String scanResult = intentResult.getContents().trim();
                     if (scanResult.contains("@") || scanResult.contains(".") || scanResult.contains(":")) {
                         inputTNAP.setText(scanResult);
-                        tab.setSelectedItemId(R.id.navigationAddChannel);
+                        tab.setSelectedItemId(R.id.navigationSetupChannel);
                     }
                     // If the length of QR result is bigger than neo address(payment code always longer)
                     // and starts with "A" or "TN".
@@ -524,16 +524,16 @@ public class MainActivity extends BaseActivity {
                         ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                         netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                         obtainBalance();
-                        refreshChannelListUI();
-                        refreshRecordUI();
+                        refreshChannelUI();
+                        refreshBillUI();
                         break;
                     case R.id.menuTestNet:
                         wApp.switchNet(ConfigList.NET_TYPE_TEST);
                         ToastUtil.show(getBaseContext(), "Switched to " + itemTitle);
                         netState.setText(itemTitle.toString().toUpperCase(Locale.getDefault()));
                         obtainBalance();
-                        refreshChannelListUI();
-                        refreshRecordUI();
+                        refreshChannelUI();
+                        refreshBillUI();
                         break;
                 }
                 return true;
@@ -619,7 +619,7 @@ public class MainActivity extends BaseActivity {
         // This is tab add channel.
         inputAssets.setOnCheckedChangeListener(onRadioCheckedChangeListener);
 
-        btnAddChannel.setOnClickListener(
+        btnSetupChannel.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
@@ -628,24 +628,24 @@ public class MainActivity extends BaseActivity {
                 }
         );
 
-        // This is tab channel list.
-        refreshChannelListUI();
+        // This is tab channel.
+        refreshChannelUI();
 
-        // This is tab record.
-        refreshRecordUI();
+        // This is tab bill.
+        refreshBillUI();
 
         // Reset tab index.
         tab.setOnFocusChangeListener(null);
-        tab.setSelectedItemId(R.id.navigationAddChannel);
+        tab.setSelectedItemId(R.id.navigationSetupChannel);
         tab.setSelectedItemId(R.id.navigationTransfer);
 
         // This is tab bar.
         tab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             private void tabsGone() {
                 tabTransfer.setVisibility(View.GONE);
-                tabAddChannel.setVisibility(View.GONE);
-                tabChannelList.setVisibility(View.GONE);
-                tabRecord.setVisibility(View.GONE);
+                tabSetupChannel.setVisibility(View.GONE);
+                tabChannel.setVisibility(View.GONE);
+                tabBill.setVisibility(View.GONE);
             }
 
             @Override
@@ -656,16 +656,16 @@ public class MainActivity extends BaseActivity {
                         tabTransfer.setVisibility(View.VISIBLE);
                         obtainBalance();
                         return true;
-                    case R.id.navigationAddChannel:
-                        tabAddChannel.setVisibility(View.VISIBLE);
+                    case R.id.navigationSetupChannel:
+                        tabSetupChannel.setVisibility(View.VISIBLE);
                         obtainBalance();
                         return true;
-                    case R.id.navigationChannelList:
-                        tabChannelList.setVisibility(View.VISIBLE);
+                    case R.id.navigationChannel:
+                        tabChannel.setVisibility(View.VISIBLE);
                         obtainBalance();
                         return true;
-                    case R.id.navigationRecord:
-                        tabRecord.setVisibility(View.VISIBLE);
+                    case R.id.navigationBill:
+                        tabBill.setVisibility(View.VISIBLE);
                         obtainBalance();
                         return true;
                 }
@@ -679,8 +679,8 @@ public class MainActivity extends BaseActivity {
 
     private synchronized void refreshUITotal() {
         refreshCardUI();
-        refreshChannelListUI();
-        refreshRecordUI();
+        refreshChannelUI();
+        refreshBillUI();
     }
 
     private synchronized void refreshCardUI() {
@@ -725,7 +725,7 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private void refreshChannelListUI() {
+    private void refreshChannelUI() {
         String net = wApp.getNet();
         List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
 
@@ -735,13 +735,13 @@ public class MainActivity extends BaseActivity {
         }
 
         if (channelList == null) {
-            channelListEmpty.setVisibility(View.VISIBLE);
+            channelEmpty.setVisibility(View.VISIBLE);
             return;
         }
 
         ChannelBean channelBean;
         int nowNetChannelCount = 0;
-        channelListEmpty.setVisibility(View.GONE);
+        channelEmpty.setVisibility(View.GONE);
         for (int index = channelList.size() - 1; index >= 0; index--) {
             Map<String, ChannelBean> channelBeanWithType = channelList.get(index);
             Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
@@ -753,44 +753,44 @@ public class MainActivity extends BaseActivity {
         }
 
         if (nowNetChannelCount == 0) {
-            channelListEmpty.setVisibility(View.VISIBLE);
+            channelEmpty.setVisibility(View.VISIBLE);
         }
     }
 
-    private void refreshRecordUI() {
+    private void refreshBillUI() {
         String net = wApp.getNet();
-        List<Map<String, RecordBean>> recordList = wApp.getRecordList();
+        List<Map<String, BillBean>> billList = wApp.getBillList();
 
-        int childCount = recordContainer.getChildCount();
+        int childCount = billContainer.getChildCount();
         if (childCount > 1) {
-            recordContainer.removeViews(1, childCount - 1);
+            billContainer.removeViews(1, childCount - 1);
         }
 
-        if (recordList == null) {
-            recordEmpty.setVisibility(View.VISIBLE);
+        if (billList == null) {
+            billEmpty.setVisibility(View.VISIBLE);
             return;
         }
 
-        RecordBean recordBean;
+        BillBean billBean;
         int nowNetRecordCount = 0;
-        recordEmpty.setVisibility(View.GONE);
-        for (int index = recordList.size() - 1; index >= 0; index--) {
-            Map<String, RecordBean> recordBeanWithType = recordList.get(index);
-            Iterator<String> typeIterator = recordBeanWithType.keySet().iterator();
+        billEmpty.setVisibility(View.GONE);
+        for (int index = billList.size() - 1; index >= 0; index--) {
+            Map<String, BillBean> billBeanWithType = billList.get(index);
+            Iterator<String> typeIterator = billBeanWithType.keySet().iterator();
             if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
                 nowNetRecordCount++;
-                recordBean = recordBeanWithType.get(net);
-                addRecordView(recordBean);
+                billBean = billBeanWithType.get(net);
+                addBillView(billBean);
             }
         }
 
         if (nowNetRecordCount == 0) {
-            recordEmpty.setVisibility(View.VISIBLE);
+            billEmpty.setVisibility(View.VISIBLE);
         }
     }
 
     private void addChannelView(@NonNull final ChannelBean channelBean) {
-        View channelView = View.inflate(this, R.layout.tab_channel_list_item, null);
+        View channelView = View.inflate(this, R.layout.tab_channel_item, null);
         TextView channelName = channelView.findViewById(R.id.channelName);
         TextView channelDeposit = channelView.findViewById(R.id.channelDeposit);
         final TextView channelBalance = channelView.findViewById(R.id.channelBalance);
@@ -816,20 +816,20 @@ public class MainActivity extends BaseActivity {
         }
 
         channelContainer.addView(channelView);
-        channelListEmpty.setVisibility(View.GONE);
+        channelEmpty.setVisibility(View.GONE);
     }
 
-    private void addRecordView(@NonNull RecordBean recordBean) {
-        View recordView = View.inflate(this, R.layout.tab_record_item, null);
-        TextView recordChannelName = recordView.findViewById(R.id.recordChannelName);
-        TextView recordPrice = recordView.findViewById(R.id.recordPrice);
-        TextView recordFee = recordView.findViewById(R.id.recordFee);
-        recordChannelName.setText(recordBean.getChannel_Alias());
-        recordPrice.setText(getString(R.string.record_price, BigDecimal.valueOf(recordBean.getPrice()).toPlainString(), recordBean.getAssetName()));
-        recordFee.setText(getString(R.string.record_fee, BigDecimal.valueOf(recordBean.getFee()).toPlainString(), recordBean.getAssetName()));
+    private void addBillView(@NonNull BillBean billBean) {
+        View billView = View.inflate(this, R.layout.tab_bill_item, null);
+        TextView billChannelName = billView.findViewById(R.id.billChannelName);
+        TextView billPrice = billView.findViewById(R.id.billPrice);
+        TextView billFee = billView.findViewById(R.id.billFee);
+        billChannelName.setText(billBean.getChannel_Alias());
+        billPrice.setText(getString(R.string.bill_price, BigDecimal.valueOf(billBean.getPrice()).toPlainString(), billBean.getAssetName()));
+        billFee.setText(getString(R.string.bill_fee, BigDecimal.valueOf(billBean.getFee()).toPlainString(), billBean.getAssetName()));
 
-        recordContainer.addView(recordView);
-        recordEmpty.setVisibility(View.GONE);
+        billContainer.addView(billView);
+        billEmpty.setVisibility(View.GONE);
     }
 
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
@@ -1022,37 +1022,47 @@ public class MainActivity extends BaseActivity {
 
         final Boolean isValidPayCode = attemptRTransaction();
 
-        if (isValidPayCode != null && !isValidPayCode) {
+        if (!isValidPayCode) {
             inputTransferTo.setError("Invalid input.");
             inputTransferTo.requestFocus();
         }
     }
 
-    private Boolean attemptRTransaction() {
+    /**
+     * @return true: Is a payment code. false: Not a payment code.
+     */
+    private boolean attemptRTransaction() {
         final Wallet wallet = wApp.getWallet();
+        final String net = wApp.getNet();
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+        Map<String, String> assetIdMap = ConfigList.ASSET_ID_MAP;
+
         if (wallet == null) {
             ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + ".");
-            return null;
+            return true;
         }
+
         String toAddress = inputTransferTo.getText().toString();
         final String paymentCodeTrim = toAddress.trim();
         final PaymentCodeBean paymentCodeBean = PaymentCodeUtil.decode(paymentCodeTrim);
+
         if (paymentCodeBean == null) {
             return false;
         }
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-        final String net = wApp.getNet();
+
         if (channelList == null) {
             ToastUtil.show(getBaseContext(), "Please add a channel.");
-            return null;
+            return true;
         }
 
         final String sTNAP = paymentCodeBean.getsTNAP();
+
         if (!TNAPUtil.isValid(sTNAP)) {
             inputTransferTo.setError("Invalid input.");
             inputTransferTo.requestFocus();
             return false;
         }
+
         final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
 
         ChannelBean channelBean = null;
@@ -1063,7 +1073,7 @@ public class MainActivity extends BaseActivity {
             if (keySetIterator.hasNext() && net.equals(keySetIterator.next())) {
                 channelBeanFor = channelBeanWithNetType.get(net);
                 currentNetChannelList.add(channelBeanFor);
-                if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(ConfigList.ASSET_ID_MAP.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
+                if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
                     channelBean = channelBeanFor;
                     break;
                 }
@@ -1071,7 +1081,7 @@ public class MainActivity extends BaseActivity {
         }
 
         if (currentNetChannelList.size() == 0) {
-            return null;
+            return true;
         }
 
         if (channelBean == null) {
@@ -1081,9 +1091,64 @@ public class MainActivity extends BaseActivity {
             }
         }
 
-        // TODO channel balance enough.
+        final double price = paymentCodeBean.getPrice();
+        String priceTrim = BigDecimal.valueOf(price).toPlainString();
+
+        if (price > 10000000000000d) {
+            ToastUtil.show(getBaseContext(), "Payment code info error.\nPrice is 10000000000000 at most.");
+            return true;
+        }
+
+        String assetName = "";
+        for (String assetNameInMap : assetIdMap.keySet()) {
+            String addOx = PrefixUtil.addOx(paymentCodeBean.getAssetId());
+            if (assetIdMap.get(assetNameInMap).equals(addOx)) {
+                assetName = assetNameInMap;
+                break;
+            }
+        }
+
+        boolean isCoinInteger = !priceTrim.contains(".");
+        boolean isCoinDigitsValid = !isCoinInteger && (priceTrim.length() - priceTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
+
+        boolean isCoinAmountOK = false;
+        boolean isAmountAffordable = false;
+
+        BigDecimal amountBigDecimal = BigDecimal.valueOf(price);
+        if (getString(R.string.tnc).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                ToastUtil.show(getBaseContext(), "Payment code info error.\nTNC balance is a decimal up to 8 digits.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainTNC())) <= 0;
+        } else if (getString(R.string.neo).equals(assetName)) {
+            if (isCoinInteger) {
+                isCoinAmountOK = true;
+            } else {
+                ToastUtil.show(getBaseContext(), "Payment code info error.\nNEO balance is a integer.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainNEO())) <= 0;
+        } else if (getString(R.string.gas).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                ToastUtil.show(getBaseContext(), "Payment code info error.\nGAS balance is a decimal up to 8 digits.");
+            }
+            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainGAS())) <= 0;
+        }
+
+        if (!isCoinAmountOK) {
+            return true;
+        }
+
+        if (!isAmountAffordable) {
+            ToastUtil.show(getBaseContext(), "Balance of current asset is not enough.");
+            return true;
+        }
 
         channelBean.setTxNonce(channelBean.getTxNonce() + 1);
+        // C++ is called cpp.
         final int txNoncePp = channelBean.getTxNonce();
         final ChannelBean channelBeanFinal = channelBean;
 
@@ -1141,7 +1206,7 @@ public class MainActivity extends BaseActivity {
                         messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
                         messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
                         messageBody_3.setAssetType(channelBeanFinal.getAssetName());
-                        messageBody_3.setValue(paymentCodeBean.getPrice());
+                        messageBody_3.setValue(price);
                         messageBody_3.setRoleIndex(0);
                         messageBody_3.setComments(paymentCodeBean.getComment());
                         req_3.setMessageBody(messageBody_3);
@@ -1218,28 +1283,28 @@ public class MainActivity extends BaseActivity {
                         if ("UpdateChannel".equals(messageTypeStr)) {
                             double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinal.getAssetName());
 
-                            List<Map<String, RecordBean>> recordList = wApp.getRecordList();
-                            if (recordList == null) {
-                                recordList = new ArrayList<>();
+                            List<Map<String, BillBean>> billList = wApp.getBillList();
+                            if (billList == null) {
+                                billList = new ArrayList<>();
                             }
-                            Map<String, RecordBean> recordBeanWithNetType = new HashMap<>();
-                            recordBeanWithNetType.put(net, new RecordBean(
+                            Map<String, BillBean> billBeanWithNetType = new HashMap<>();
+                            billBeanWithNetType.put(net, new BillBean(
                                     channelBeanFinal,
                                     BigDecimalUtil.subtract(spvBalance, channelBeanFinal.getBalance()),
                                     0d,
                                     resp_4,
                                     resp_8));
 
-                            recordList.add(recordBeanWithNetType);
+                            billList.add(billBeanWithNetType);
                             channelBeanFinal.setBalance(spvBalance);
 
-                            wApp.setRecordList(recordList);
+                            wApp.setBillList(billList);
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     obtainBalance();
                                     refreshUITotal();
-                                    tab.setSelectedItemId(R.id.navigationRecord);
+                                    tab.setSelectedItemId(R.id.navigationBill);
                                     inputTransferTo.setText(null);
                                     inputAmount.setText(null);
                                     btnTransferTo.setClickable(true);
@@ -1706,12 +1771,12 @@ public class MainActivity extends BaseActivity {
                                         new Runnable() {
                                             @Override
                                             public void run() {
-                                                refreshChannelListUI();
-                                                tab.setSelectedItemId(R.id.navigationChannelList);
+                                                refreshChannelUI();
+                                                tab.setSelectedItemId(R.id.navigationChannel);
                                                 inputTNAP.setText(null);
                                                 inputDeposit.setText(null);
                                                 inputAlias.setText(null);
-                                                btnAddChannel.setClickable(true);
+                                                btnSetupChannel.setClickable(true);
                                                 ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was found.\nNew channel will preheat for a few seconds before it can use.");
                                             }
                                         }
@@ -1722,7 +1787,7 @@ public class MainActivity extends BaseActivity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        btnAddChannel.setClickable(true);
+                                        btnSetupChannel.setClickable(true);
                                     }
                                 });
                                 webSocket.cancel();
@@ -1753,7 +1818,7 @@ public class MainActivity extends BaseActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        btnAddChannel.setClickable(true);
+                        btnSetupChannel.setClickable(true);
                         ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                     }
                 });

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/tabChannelList"
+    android:id="@+id/tabChannel"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <TextView
-        android:id="@+id/titleChannelList"
+        android:id="@+id/titleChannel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="CHANNEL LIST"
+        android:text="CHANNEL"
         android:textSize="22sp"
         android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        app:layout_constraintTop_toBottomOf="@id/titleChannelList">
+        app:layout_constraintTop_toBottomOf="@id/titleChannel">
 
         <LinearLayout
             android:id="@+id/channelContainer"
@@ -32,11 +32,11 @@
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/channelListEmpty"
+                android:id="@+id/channelEmpty"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/activity_vertical_margin"
-                android:text="No known channel, please add first."
+                android:text="No known channel, please set up first."
                 android:textAlignment="center"
                 android:textColor="@color/colorListBlue"
                 android:textSize="16sp" />

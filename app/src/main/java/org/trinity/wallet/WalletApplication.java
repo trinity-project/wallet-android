@@ -12,8 +12,8 @@ import com.securepreferences.SecurePreferences;
 
 import org.trinity.util.android.QRCodeUtil;
 import org.trinity.util.thread.ExecutorUtil;
+import org.trinity.wallet.entity.BillBean;
 import org.trinity.wallet.entity.ChannelBean;
-import org.trinity.wallet.entity.RecordBean;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,7 +72,7 @@ public final class WalletApplication extends Application {
     /**
      * Key: Net type. Value: Bean.
      */
-    private transient volatile List<Map<String, RecordBean>> recordList;
+    private transient volatile List<Map<String, BillBean>> billList;
 
     private SharedPreferences identityVerifyPrefs;
 
@@ -214,7 +214,7 @@ public final class WalletApplication extends Application {
         editor.remove(ConfigList.SAVE_CHANNEL_LIST);
         editor.remove(ConfigList.SAVE_RECORD_LIST);
         editor.putString(ConfigList.SAVE_CHANNEL_LIST, gson.toJson(channelList));
-        editor.putString(ConfigList.SAVE_RECORD_LIST, gson.toJson(recordList));
+        editor.putString(ConfigList.SAVE_RECORD_LIST, gson.toJson(billList));
         editor.commit();
     }
 
@@ -231,11 +231,11 @@ public final class WalletApplication extends Application {
             channelList = gson.fromJson(channelListJson, new ChannelListTypeToken().getType());
         }
         if (recordListJson == null) {
-            recordList = null;
+            billList = null;
         } else {
-            class RecordListTypeToken extends TypeToken<ArrayList<HashMap<String, RecordBean>>> {
+            class RecordListTypeToken extends TypeToken<ArrayList<HashMap<String, BillBean>>> {
             }
-            recordList = gson.fromJson(recordListJson, new RecordListTypeToken().getType());
+            billList = gson.fromJson(recordListJson, new RecordListTypeToken().getType());
         }
     }
 
@@ -270,7 +270,7 @@ public final class WalletApplication extends Application {
         addressQR = null;
         clearBalance();
         channelList = null;
-        recordList = null;
+        billList = null;
         saveGlobal();
     }
 
@@ -367,12 +367,12 @@ public final class WalletApplication extends Application {
         saveData();
     }
 
-    public List<Map<String, RecordBean>> getRecordList() {
-        return recordList;
+    public List<Map<String, BillBean>> getBillList() {
+        return billList;
     }
 
-    public void setRecordList(List<Map<String, RecordBean>> recordList) {
-        this.recordList = recordList;
+    public void setBillList(List<Map<String, BillBean>> billList) {
+        this.billList = billList;
         saveData();
     }
 

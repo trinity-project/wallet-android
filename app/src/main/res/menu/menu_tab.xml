@@ -5,15 +5,15 @@
         android:icon="@drawable/ic_transfer_black_24dp"
         android:title="@string/tab_transfer" />
     <item
-        android:id="@+id/navigationAddChannel"
+        android:id="@+id/navigationSetupChannel"
         android:icon="@drawable/ic_add_channel_black_24dp"
-        android:title="@string/tab_add_channel" />
+        android:title="@string/tab_setup_channel" />
     <item
-        android:id="@+id/navigationChannelList"
+        android:id="@+id/navigationChannel"
         android:icon="@drawable/ic_channel_list_black_24dp"
-        android:title="@string/tab_channel_list" />
+        android:title="@string/tab_channel" />
     <item
-        android:id="@+id/navigationRecord"
+        android:id="@+id/navigationBill"
         android:icon="@drawable/ic_record_black_24dp"
-        android:title="@string/tab_record" />
+        android:title="@string/tab_bill" />
 </menu>

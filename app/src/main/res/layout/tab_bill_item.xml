@@ -1,74 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/channelListItem"
+    android:id="@+id/billItem"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
     <TextView
-        android:id="@+id/channelName"
+        android:id="@+id/billChannelName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="_DEFAULT_CHANNEL_NAME_"
+        android:text="_DEFAULT_CHANNEL_ALIAS_"
         android:textSize="16sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout
-        android:id="@+id/channelNumLine"
-        android:layout_width="match_parent"
-        android:layout_height="16dp"
-        android:layout_marginEnd="@dimen/activity_horizontal_margin"
-        android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:orientation="horizontal"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/channelName">
-
-        <TextView
-            android:id="@+id/channelDeposit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="10"
-            android:text="@string/channel_deposit" />
-
-        <TextView
-            android:id="@+id/channelBalance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="10"
-            android:text="@string/channel_balance" />
-
-        <ImageButton
-            android:id="@+id/channelClose"
-            android:layout_width="16dp"
-            android:layout_height="28dp"
-            android:layout_gravity="center_vertical"
-            android:layout_weight="1"
-            android:contentDescription="@string/btn_channel_close"
-            android:src="@drawable/ic_close_24dp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/channelWordLine"
+        android:id="@+id/billNumLine"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:gravity="start"
         android:orientation="horizontal"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/channelNumLine">
+        app:layout_constraintTop_toBottomOf="@+id/billChannelName">
 
         <TextView
-            android:id="@+id/channelState"
+            android:id="@+id/billPrice"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/channel_state" />
+            android:layout_weight=".50"
+            android:text="@string/bill_price" />
+
+        <TextView
+            android:id="@+id/billFee"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight=".50"
+            android:text="@string/bill_fee" />
     </LinearLayout>
 
     <View
@@ -80,5 +53,5 @@
         android:background="@drawable/shape_dash_line"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/channelWordLine" />
+        app:layout_constraintTop_toBottomOf="@+id/billNumLine" />
 </android.support.constraint.ConstraintLayout>

@@ -5,7 +5,7 @@ import android.support.annotation.NonNull;
 import org.trinity.wallet.net.websocket.ACRsmcBean;
 import org.trinity.wallet.net.websocket.ACRsmcSignBean;
 
-public class RecordBean {
+public class BillBean {
     private String channel_Name;
     private String channel_Alias;
     private String assetName;
@@ -14,7 +14,7 @@ public class RecordBean {
     private ACRsmcSignBean sign_C_R_HeSigned;
     private ACRsmcBean sign_BR_HeSigned;
 
-    public RecordBean(@NonNull ChannelBean channelBean, double price, double fee, @NonNull ACRsmcSignBean sign_C_R_HeSigned, @NonNull ACRsmcBean sign_BR_HeSigned) {
+    public BillBean(@NonNull ChannelBean channelBean, double price, double fee, @NonNull ACRsmcSignBean sign_C_R_HeSigned, @NonNull ACRsmcBean sign_BR_HeSigned) {
         this.channel_Name = channelBean.getName();
         this.channel_Alias = channelBean.getAlias();
         this.assetName = channelBean.getAssetName();

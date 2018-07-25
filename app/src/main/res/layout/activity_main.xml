@@ -105,15 +105,15 @@
                 android:visibility="gone" />
 
             <include
-                layout="@layout/tab_add_channel"
+                layout="@layout/tab_setup_channel"
                 android:visibility="gone" />
 
             <include
-                layout="@layout/tab_channel_list"
+                layout="@layout/tab_channel"
                 android:visibility="gone" />
 
             <include
-                layout="@layout/tab_record"
+                layout="@layout/tab_bill"
                 android:visibility="gone" />
         </RelativeLayout>
     </ScrollView>

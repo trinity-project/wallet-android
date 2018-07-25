@@ -2,6 +2,7 @@ package org.trinity.util.net;
 
 import android.support.annotation.NonNull;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -10,10 +11,26 @@ import org.trinity.util.convert.TNAPUtil;
 import org.trinity.wallet.WalletApplication;
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.net.jsonrpc.RefoundTransBean;
+import org.trinity.wallet.net.websocket.MessageTypeFilterBean;
 
 import neoutils.Wallet;
 
-public class JSONObjectUtil {
+public final class JSONObjectUtil {
+
+    private static Gson gson;
+
+    static {
+        gson = WalletApplication.getGson();
+    }
+
+    public static String getMessageType(String text) {
+        try {
+            return WalletApplication.getGson().fromJson(text, MessageTypeFilterBean.class).getMessageType();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
     public static double updateChannelGetSpvBalance(String respJson, String sTNAPSpv, String assetName) {
         return WalletApplication.getGson().fromJson(respJson, JsonObject.class)
                 .getAsJsonObject("MessageBody")
@@ -23,7 +40,7 @@ public class JSONObjectUtil {
                 .getAsDouble();
     }
 
-    public static String settleBeanMaker(@NonNull Wallet wallet, @NonNull ChannelBean channel, @NonNull RefoundTransBean resp) {
+    public static String settleJSONMaker(@NonNull Wallet wallet, @NonNull ChannelBean channel, @NonNull RefoundTransBean resp) {
         ACSettleBean req = new ACSettleBean();
 
         String sTNAP = channel.getTNAP();
@@ -35,9 +52,10 @@ public class JSONObjectUtil {
         req.setTxNonce(channel.getTxNonce());
         ACSettleBean.MessageBodyBean messageBody = new ACSettleBean.MessageBodyBean();
         ACSettleBean.MessageBodyBean.SettlementBean settlement = new ACSettleBean.MessageBodyBean.SettlementBean();
-        settlement.setTxData(resp.getResult().getTxData());
-        settlement.setTxId(resp.getResult().getTxid());
-        settlement.setWitness(resp.getResult().getWitness());
+        settlement.setTxData(resp.getResult().getSettlement().getTxData());
+        settlement.setTxId(resp.getResult().getSettlement().getTxId());
+        settlement.setWitness(resp.getResult().getSettlement().getWitness());
+        messageBody.setSettlement(settlement);
         JsonObject balance = new JsonObject();
         JsonObject spvPublicKey = new JsonObject();
         spvPublicKey.addProperty(channel.getAssetName(), channel.getBalance());
@@ -48,7 +66,7 @@ public class JSONObjectUtil {
         messageBody.setBalance(balance);
         req.setMessageBody(messageBody);
 
-        return WalletApplication.getGson().toJson(req);
+        return gson.toJson(req);
     }
 
     private static class ACSettleBean {

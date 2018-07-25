@@ -14,7 +14,7 @@ import org.trinity.util.algorithm.Base58Util;
 import org.trinity.util.algorithm.UUIDUtil;
 import org.trinity.util.convert.HexUtil;
 import org.trinity.util.convert.NeoSignUtil;
-import org.trinity.util.net.WebSocketMessageTypeUtil;
+import org.trinity.util.net.JSONObjectUtil;
 import org.trinity.wallet.net.JSONRpcClient;
 import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
@@ -142,7 +142,7 @@ public class ExampleInstrumentedTest {
             public void onMessage(WebSocket webSocket, String text) {
                 super.onMessage(webSocket, text);
 
-                String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
+                String messageTypeStr = JSONObjectUtil.getMessageType(text);
 
                 if (iAmSender) {
                     if ("Founder".equals(messageTypeStr)) {

@@ -50,7 +50,6 @@ import org.trinity.util.convert.PaymentCodeUtil;
 import org.trinity.util.convert.PrefixUtil;
 import org.trinity.util.convert.TNAPUtil;
 import org.trinity.util.net.JSONObjectUtil;
-import org.trinity.util.net.WebSocketMessageTypeUtil;
 import org.trinity.wallet.ConfigList;
 import org.trinity.wallet.R;
 import org.trinity.wallet.WalletApplication;
@@ -62,6 +61,7 @@ import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
 import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
 import org.trinity.wallet.net.jsonrpc.GetBalanceBean;
+import org.trinity.wallet.net.jsonrpc.RefoundTransBean;
 import org.trinity.wallet.net.jsonrpc.SendrawtransactionBean;
 import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
 import org.trinity.wallet.net.websocket.ACFounderBean;
@@ -69,6 +69,7 @@ import org.trinity.wallet.net.websocket.ACFounderSignBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
 import org.trinity.wallet.net.websocket.ACRsmcBean;
 import org.trinity.wallet.net.websocket.ACRsmcSignBean;
+import org.trinity.wallet.net.websocket.ACSettleSignBean;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -788,23 +789,32 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private void addChannelView(@NonNull ChannelBean channelBean) {
+    private void addChannelView(@NonNull final ChannelBean channelBean) {
         View channelView = View.inflate(this, R.layout.tab_channel_list_item, null);
         TextView channelName = channelView.findViewById(R.id.channelName);
         TextView channelDeposit = channelView.findViewById(R.id.channelDeposit);
-        TextView channelBalance = channelView.findViewById(R.id.channelBalance);
+        final TextView channelBalance = channelView.findViewById(R.id.channelBalance);
         TextView channelState = channelView.findViewById(R.id.channelState);
         ImageButton channelClose = channelView.findViewById(R.id.channelClose);
         channelName.setText(channelBean.getAlias());
         channelDeposit.setText(getString(R.string.channel_deposit, BigDecimal.valueOf(channelBean.getDeposit()).toPlainString(), channelBean.getAssetName()));
         channelBalance.setText(getString(R.string.channel_balance, BigDecimal.valueOf(channelBean.getBalance()).toPlainString(), channelBean.getAssetName()));
         channelState.setText(getString(R.string.channel_state, channelBean.getState()));
-        channelClose.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                // TODO close channel.
-            }
-        });
+        if (ConfigList.CHANNEL_STATE_HEATING.equals(channelBean.getState()) ||
+                ConfigList.CHANNEL_STATE_COOLING.equals(channelBean.getState()) ||
+                ConfigList.CHANNEL_STATE_DISMANTLED.equals(channelBean.getState())) {
+            channelClose.setClickable(false);
+        }
+        if (ConfigList.CHANNEL_STATE_CLEAR.equals(channelBean.getState())) {
+            channelClose.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(final View view) {
+                    view.setClickable(false);
+                    dismantleChannel(channelBean);
+                }
+            });
+        }
+
         channelContainer.addView(channelView);
         channelListEmpty.setVisibility(View.GONE);
     }
@@ -825,6 +835,7 @@ public class MainActivity extends BaseActivity {
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
 
     // TODO Connect all the channels for current net in list.
+    // TODO Inverted R transaction(in another way, receive an R transaction).
     private void connectChannels() {
 
     }
@@ -851,7 +862,7 @@ public class MainActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                         }
                     });
                     return;
@@ -962,7 +973,7 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             return;
                         }
 
@@ -1017,7 +1028,6 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    // TODO Inverted R transaction(in another way, receive an R transaction).
     private Boolean attemptRTransaction() {
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -1076,7 +1086,14 @@ public class MainActivity extends BaseActivity {
         channelBean.setTxNonce(channelBean.getTxNonce() + 1);
         final int txNoncePp = channelBean.getTxNonce();
         final ChannelBean channelBeanFinal = channelBean;
-        Runnable service = new Runnable() {
+
+        btnTransferTo.setClickable(false);
+
+        WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                .url(TNAPUtil.getWs(sTNAPSpv))
+                .build();
+
+        webSocketClient.connect(new WebSocketListener() {
             private JSONRpcClient rpc_1;
             private FunderTransactionBean resp_2;
             private ACRsmcBean req_3;
@@ -1087,180 +1104,162 @@ public class MainActivity extends BaseActivity {
             private ACRsmcBean resp_8;
 
             @Override
-            public void run() {
-                rpc_1 = new JSONRpcClient.Builder()
-                        .net(WalletApplication.getNetUrl())
-                        .method("FunderTransaction")
-                        .params(TNAPUtil.getPublicKey(sTNAP),
-                                TNAPUtil.getPublicKey(sTNAPSpv),
-                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
-                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
-                                String.valueOf(channelBeanFinal.getBalance()),
-                                String.valueOf(channelBeanFinal.getDeposit() + channelBeanFinal.getDeposit() - channelBeanFinal.getBalance()),
-                                channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
-                                channelBeanFinal.getAssetName())
-                        .id(channelBeanFinal.getName() + txNoncePp)
-                        .build();
-
-                String json_2 = rpc_1.post();
-
-                if (json_2 == null) {
-                    return;
-                }
-
-                resp_2 = gson.fromJson(json_2, FunderTransactionBean.class);
-
-                runOnUiThread(new Runnable() {
+            public void onOpen(final WebSocket webSocket, Response response) {
+                super.onOpen(webSocket, response);
+                runOffUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        WebSocketClient webSocketClient = new WebSocketClient.Builder()
-                                .url(TNAPUtil.getWs(sTNAPSpv))
+                        rpc_1 = new JSONRpcClient.Builder()
+                                .net(WalletApplication.getNetUrl())
+                                .method("FunderTransaction")
+                                .params(TNAPUtil.getPublicKey(sTNAP),
+                                        TNAPUtil.getPublicKey(sTNAPSpv),
+                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                        String.valueOf(channelBeanFinal.getBalance()),
+                                        String.valueOf(channelBeanFinal.getDeposit() + channelBeanFinal.getDeposit() - channelBeanFinal.getBalance()),
+                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
+                                        channelBeanFinal.getAssetName())
+                                .id(channelBeanFinal.getName() + txNoncePp)
                                 .build();
-                        webSocketClient.connect(new WebSocketListener() {
-                            @Override
-                            public void onOpen(final WebSocket webSocket, Response response) {
-                                super.onOpen(webSocket, response);
-                                runOffUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        req_3 = new ACRsmcBean();
-                                        req_3.setSender(sTNAPSpv);
-                                        req_3.setReceiver(sTNAP);
-                                        req_3.setChannelName(channelBeanFinal.getName());
-                                        req_3.setTxNonce(txNoncePp);
-                                        ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
-                                        messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
-                                        messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
-                                        messageBody_3.setAssetType(channelBeanFinal.getAssetName());
-                                        messageBody_3.setValue(paymentCodeBean.getPrice());
-                                        messageBody_3.setRoleIndex(0);
-                                        messageBody_3.setComments(paymentCodeBean.getComment());
-                                        req_3.setMessageBody(messageBody_3);
 
-                                        String send_3 = gson.toJson(req_3);
-                                        webSocket.send(send_3);
-                                    }
-                                });
-                            }
+                        String json_2 = rpc_1.post();
 
-                            @Override
-                            public void onMessage(final WebSocket webSocket, final String text) {
-                                super.onMessage(webSocket, text);
-                                runOffUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
-                                        if ("RsmcSign".equals(messageTypeStr)) {
-                                            resp_4 = gson.fromJson(text, ACRsmcSignBean.class);
-                                        }
-                                        if ("Rsmc".equals(messageTypeStr)) {
-                                            ACRsmcBean tmp = gson.fromJson(text, ACRsmcBean.class);
-                                            // case BR empty: save to r5.
-                                            if (tmp.getMessageBody().getBreachRemedy() == null) {
-                                                resp_5 = tmp;
-                                                req_6 = new ACRsmcSignBean();
-                                                req_6.setChannelName(resp_5.getChannelName());
-                                                req_6.setSender(sTNAPSpv);
-                                                req_6.setReceiver(sTNAP);
-                                                req_6.setTxNonce(resp_5.getTxNonce());
-                                                ACRsmcSignBean.MessageBodyBean messageBody_6 = new ACRsmcSignBean.MessageBodyBean();
-                                                messageBody_6.setValue(resp_5.getMessageBody().getValue());
-                                                messageBody_6.setComments(resp_5.getMessageBody().getComments());
-                                                messageBody_6.setRoleIndex(resp_5.getMessageBody().getRoleIndex());
-                                                ACRsmcSignBean.MessageBodyBean.CommitmentBean commitment_6 = new ACRsmcSignBean.MessageBodyBean.CommitmentBean();
-                                                commitment_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getCommitment()), ACRsmcSignBean.MessageBodyBean.CommitmentBean.OriginalDataBean.class));
-                                                commitment_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
-                                                messageBody_6.setCommitment(commitment_6);
-                                                ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery_6 = new ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean();
-                                                revocableDelivery_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getRevocableDelivery()), ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanX.class));
-                                                revocableDelivery_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
-                                                messageBody_6.setRevocableDelivery(revocableDelivery_6);
-                                                req_6.setMessageBody(messageBody_6);
+                        if (json_2 == null) {
+                            webSocket.cancel();
+                            return;
+                        }
 
-                                                String send_6 = gson.toJson(req_6);
-                                                webSocket.send(send_6);
+                        resp_2 = gson.fromJson(json_2, FunderTransactionBean.class);
 
-                                                req_7 = new ACRsmcBean();
-                                                req_7.setChannelName(resp_5.getChannelName());
-                                                req_7.setSender(sTNAPSpv);
-                                                req_7.setReceiver(sTNAP);
-                                                req_7.setTxNonce(resp_5.getTxNonce());
-                                                ACRsmcBean.MessageBodyBean messageBody_7 = new ACRsmcBean.MessageBodyBean();
-                                                messageBody_7.setAssetType(resp_5.getMessageBody().getAssetType());
-                                                messageBody_7.setValue(resp_5.getMessageBody().getValue());
-                                                messageBody_7.setComments(resp_5.getMessageBody().getComments());
-                                                messageBody_7.setRoleIndex(resp_5.getMessageBody().getRoleIndex() + 1);
-                                                ACRsmcBean.MessageBodyBean.BreachRemedyBean breachRemedy_7 = new ACRsmcBean.MessageBodyBean.BreachRemedyBean();
-                                                breachRemedy_7.setOriginalData(gson.fromJson(gson.toJson(resp_2.getResult().getBR_TX()), ACRsmcBean.MessageBodyBean.BreachRemedyBean.OriginalDataBean.class));
-                                                breachRemedy_7.setTxDataSign(NeoSignUtil.signToHex(resp_2.getResult().getBR_TX().getTxData(), wallet.getPrivateKey()));
-                                                messageBody_7.setBreachRemedy(breachRemedy_7);
-                                                req_7.setMessageBody(messageBody_7);
+                        req_3 = new ACRsmcBean();
+                        req_3.setSender(sTNAPSpv);
+                        req_3.setReceiver(sTNAP);
+                        req_3.setChannelName(channelBeanFinal.getName());
+                        req_3.setTxNonce(txNoncePp);
+                        ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
+                        messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
+                        messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
+                        messageBody_3.setAssetType(channelBeanFinal.getAssetName());
+                        messageBody_3.setValue(paymentCodeBean.getPrice());
+                        messageBody_3.setRoleIndex(0);
+                        messageBody_3.setComments(paymentCodeBean.getComment());
+                        req_3.setMessageBody(messageBody_3);
 
-                                                String send_7 = gson.toJson(req_7);
-                                                webSocket.send(send_7);
-                                            }
-                                            // case BR no empty save to r8.
-                                            else {
-                                                resp_8 = tmp;
-                                            }
-                                        }
-                                        if ("UpdateChannel".equals(messageTypeStr)) {
-                                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinal.getAssetName());
-
-                                            List<Map<String, RecordBean>> recordList = wApp.getRecordList();
-                                            if (recordList == null) {
-                                                recordList = new ArrayList<>();
-                                            }
-                                            Map<String, RecordBean> recordBeanWithNetType = new HashMap<>();
-                                            recordBeanWithNetType.put(net, new RecordBean(
-                                                    channelBeanFinal,
-                                                    BigDecimalUtil.subtract(spvBalance, channelBeanFinal.getBalance()),
-                                                    0d,
-                                                    resp_4,
-                                                    resp_8));
-
-                                            recordList.add(recordBeanWithNetType);
-                                            channelBeanFinal.setBalance(spvBalance);
-
-                                            wApp.setRecordList(recordList);
-                                            runOnUiThread(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    obtainBalance();
-                                                    refreshUITotal();
-                                                    inputTransferTo.setText(null);
-                                                    inputAmount.setText(null);
-                                                    btnTransferTo.setClickable(true);
-                                                    tab.setSelectedItemId(R.id.navigationRecord);
-                                                    ToastUtil.show(getBaseContext(), "Channel payment admitted by the trinity node(not on the block chain yet).");
-                                                }
-                                            });
-                                            webSocket.close(1000, null);
-                                        }
-                                    }
-                                });
-                            }
-
-                            @Override
-                            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
-                                super.onFailure(webSocket, t, response);
-                                t.printStackTrace();
-                                runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        btnTransferTo.setClickable(true);
-                                        ToastUtil.show(getBaseContext(), "Implicit problem happened.");
-                                    }
-                                });
-                            }
-                        });
+                        String send_3 = gson.toJson(req_3);
+                        webSocket.send(send_3);
                     }
                 });
             }
-        };
 
-        btnTransferTo.setClickable(false);
-        runOffUiThread(service);
+            @Override
+            public void onMessage(final WebSocket webSocket, final String text) {
+                super.onMessage(webSocket, text);
+                runOffUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String messageTypeStr = JSONObjectUtil.getMessageType(text);
+                        if ("RsmcSign".equals(messageTypeStr)) {
+                            resp_4 = gson.fromJson(text, ACRsmcSignBean.class);
+                            return;
+                        }
+                        if ("Rsmc".equals(messageTypeStr)) {
+                            ACRsmcBean tmp = gson.fromJson(text, ACRsmcBean.class);
+                            // case BR empty: save to r5.
+                            if (tmp.getMessageBody().getBreachRemedy() == null) {
+                                resp_5 = tmp;
+                                req_6 = new ACRsmcSignBean();
+                                req_6.setChannelName(resp_5.getChannelName());
+                                req_6.setSender(sTNAPSpv);
+                                req_6.setReceiver(sTNAP);
+                                req_6.setTxNonce(resp_5.getTxNonce());
+                                ACRsmcSignBean.MessageBodyBean messageBody_6 = new ACRsmcSignBean.MessageBodyBean();
+                                messageBody_6.setValue(resp_5.getMessageBody().getValue());
+                                messageBody_6.setComments(resp_5.getMessageBody().getComments());
+                                messageBody_6.setRoleIndex(resp_5.getMessageBody().getRoleIndex());
+                                ACRsmcSignBean.MessageBodyBean.CommitmentBean commitment_6 = new ACRsmcSignBean.MessageBodyBean.CommitmentBean();
+                                commitment_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getCommitment()), ACRsmcSignBean.MessageBodyBean.CommitmentBean.OriginalDataBean.class));
+                                commitment_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
+                                messageBody_6.setCommitment(commitment_6);
+                                ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery_6 = new ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean();
+                                revocableDelivery_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getRevocableDelivery()), ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanX.class));
+                                revocableDelivery_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
+                                messageBody_6.setRevocableDelivery(revocableDelivery_6);
+                                req_6.setMessageBody(messageBody_6);
+
+                                String send_6 = gson.toJson(req_6);
+                                webSocket.send(send_6);
+
+                                req_7 = new ACRsmcBean();
+                                req_7.setChannelName(resp_5.getChannelName());
+                                req_7.setSender(sTNAPSpv);
+                                req_7.setReceiver(sTNAP);
+                                req_7.setTxNonce(resp_5.getTxNonce());
+                                ACRsmcBean.MessageBodyBean messageBody_7 = new ACRsmcBean.MessageBodyBean();
+                                messageBody_7.setAssetType(resp_5.getMessageBody().getAssetType());
+                                messageBody_7.setValue(resp_5.getMessageBody().getValue());
+                                messageBody_7.setComments(resp_5.getMessageBody().getComments());
+                                messageBody_7.setRoleIndex(resp_5.getMessageBody().getRoleIndex() + 1);
+                                ACRsmcBean.MessageBodyBean.BreachRemedyBean breachRemedy_7 = new ACRsmcBean.MessageBodyBean.BreachRemedyBean();
+                                breachRemedy_7.setOriginalData(gson.fromJson(gson.toJson(resp_2.getResult().getBR_TX()), ACRsmcBean.MessageBodyBean.BreachRemedyBean.OriginalDataBean.class));
+                                breachRemedy_7.setTxDataSign(NeoSignUtil.signToHex(resp_2.getResult().getBR_TX().getTxData(), wallet.getPrivateKey()));
+                                messageBody_7.setBreachRemedy(breachRemedy_7);
+                                req_7.setMessageBody(messageBody_7);
+
+                                String send_7 = gson.toJson(req_7);
+                                webSocket.send(send_7);
+                            }
+                            // case BR no empty save to r8.
+                            else {
+                                resp_8 = tmp;
+                            }
+                            return;
+                        }
+                        if ("UpdateChannel".equals(messageTypeStr)) {
+                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinal.getAssetName());
+
+                            List<Map<String, RecordBean>> recordList = wApp.getRecordList();
+                            if (recordList == null) {
+                                recordList = new ArrayList<>();
+                            }
+                            Map<String, RecordBean> recordBeanWithNetType = new HashMap<>();
+                            recordBeanWithNetType.put(net, new RecordBean(
+                                    channelBeanFinal,
+                                    BigDecimalUtil.subtract(spvBalance, channelBeanFinal.getBalance()),
+                                    0d,
+                                    resp_4,
+                                    resp_8));
+
+                            recordList.add(recordBeanWithNetType);
+                            channelBeanFinal.setBalance(spvBalance);
+
+                            wApp.setRecordList(recordList);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    obtainBalance();
+                                    refreshUITotal();
+                                    tab.setSelectedItemId(R.id.navigationRecord);
+                                    inputTransferTo.setText(null);
+                                    inputAmount.setText(null);
+                                    btnTransferTo.setClickable(true);
+                                    ToastUtil.show(getBaseContext(), "Channel payment admitted by the trinity node(not on the block chain yet).");
+                                }
+                            });
+                            webSocket.close(1000, null);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                super.onFailure(webSocket, t, response);
+                t.printStackTrace();
+                btnTransferTo.setClickable(true);
+                ToastUtil.show(getBaseContext(), "Implicit problem exists.");
+            }
+        });
 
         return true;
     }
@@ -1362,7 +1361,7 @@ public class MainActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             btnTransferTo.setClickable(true);
                         }
                     });
@@ -1377,7 +1376,7 @@ public class MainActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             btnTransferTo.setClickable(true);
                         }
                     });
@@ -1400,7 +1399,7 @@ public class MainActivity extends BaseActivity {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             btnTransferTo.setClickable(true);
                         }
                     });
@@ -1413,7 +1412,7 @@ public class MainActivity extends BaseActivity {
                     public void run() {
                         if (!resp_4.isResult()) {
                             btnTransferTo.setClickable(true);
-                            ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             return;
                         }
                         ToastUtil.show(getBaseContext(), "Transfer succeed.\nBlock chain confirms in seconds.");
@@ -1590,7 +1589,7 @@ public class MainActivity extends BaseActivity {
                 Runnable service = new Runnable() {
                     @Override
                     public void run() {
-                        String messageTypeStr = WebSocketMessageTypeUtil.getMessageType(text);
+                        String messageTypeStr = JSONObjectUtil.getMessageType(text);
                         if ("RegisterChannelFail".equals(messageTypeStr)) {
                             webSocket.cancel();
                             return;
@@ -1681,10 +1680,10 @@ public class MainActivity extends BaseActivity {
                                 return;
                             }
                             resp_9 = gson.fromJson(json_9, SendrawtransactionBean.class);
-                            Boolean addChannelResult = resp_9.isResult();
+                            Boolean setChannelResult = resp_9.isResult();
 
-                            // Add channel success.
-                            if (addChannelResult) {
+                            // Set up channel success.
+                            if (setChannelResult) {
                                 channelBeanHeating = new ChannelBean(
                                         resp_7.getChannelName(),
                                         sTNAPTrim,
@@ -1693,7 +1692,7 @@ public class MainActivity extends BaseActivity {
                                         resp_7.getMessageBody().getDeposit(),
                                         resp_7.getMessageBody().getDeposit(),
                                         resp_7.getMessageBody().getAssetType(),
-                                        ConfigList.CHANNEL_STATUS_HEATING,
+                                        ConfigList.CHANNEL_STATE_HEATING,
                                         resp_7);
                                 Map<String, ChannelBean> channelBeanWithNetType = new HashMap<>();
                                 channelBeanWithNetType.put(net, channelBeanHeating);
@@ -1713,12 +1712,12 @@ public class MainActivity extends BaseActivity {
                                                 inputDeposit.setText(null);
                                                 inputAlias.setText(null);
                                                 btnAddChannel.setClickable(true);
-                                                ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" found.\nNew channel will preheat for a few seconds before it can use.");
+                                                ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was found.\nNew channel will preheat for a few seconds before it can use.");
                                             }
                                         }
                                 );
                             }
-                            // Add channel fail.
+                            // Set up channel fail.
                             else {
                                 runOnUiThread(new Runnable() {
                                     @Override
@@ -1728,10 +1727,17 @@ public class MainActivity extends BaseActivity {
                                 });
                                 webSocket.cancel();
                             }
+                            return;
                         }
                         if ("AddChannel".equals(messageTypeStr)) {
-                            channelBeanHeating.setState(ConfigList.CHANNEL_STATUS_CLEAR);
-                            ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was clear.");
+                            channelBeanHeating.setState(ConfigList.CHANNEL_STATE_CLEAR);
+                            wApp.saveData();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was clear.");
+                                }
+                            });
                             webSocket.close(1000, null);
                         }
                     }
@@ -1747,15 +1753,183 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         btnAddChannel.setClickable(true);
-                        ToastUtil.show(getBaseContext(), "Implicit problem happened.");
+                        ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                     }
                 });
             }
         });
     }
 
-    // TODO Dismantle channel.
-    private void dismantleChannel() {
+    private void dismantleChannel(final ChannelBean channelBean) {
+        final Wallet wallet = wApp.getWallet();
+        final String net = wApp.getNet();
+        final String sTNAP = channelBean.getTNAP();
+        final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
+        WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                .url(TNAPUtil.getWs(sTNAPSpv))
+                .build();
+
+        webSocketClient.connect(new WebSocketListener() {
+            private Map<String, ChannelBean> channelToBeRemoved;
+
+            private JSONRpcClient rpc_1;
+            private RefoundTransBean resp_2;
+            private String req_3;
+            private ACSettleSignBean resp_4;
+            private JSONRpcClient rpc_5;
+            private SendrawtransactionBean resp_6;
+
+            @Override
+            public void onOpen(final WebSocket webSocket, Response response) {
+                super.onOpen(webSocket, response);
+                runOffUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        channelBean.setTxNonce(channelBean.getTxNonce() + 1);
+
+                        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+                        ChannelBean channelBeanFor;
+                        for (Map<String, ChannelBean> channelBeanWithNetType : channelList) {
+                            Iterator<String> keySetIterator = channelBeanWithNetType.keySet().iterator();
+                            if (keySetIterator.hasNext() && net.equals(keySetIterator.next())) {
+                                channelBeanFor = channelBeanWithNetType.get(net);
+                                if (channelBean.getName().equals(channelBeanFor.getName())) {
+                                    channelToBeRemoved = channelBeanWithNetType;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (channelToBeRemoved == null) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    webSocket.cancel();
+                                }
+                            });
+                            return;
+                        }
+
+                        rpc_1 = new JSONRpcClient.Builder()
+                                .net(WalletApplication.getNetUrl())
+                                .method("RefoundTrans")
+                                .params(channelBean.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                        String.valueOf(channelBean.getBalance()),
+                                        String.valueOf(BigDecimalUtil.subtract(BigDecimalUtil.add(channelBean.getDeposit(), channelBean.getDeposit()), channelBean.getBalance())),
+                                        TNAPUtil.getPublicKey(sTNAPSpv),
+                                        TNAPUtil.getPublicKey(sTNAP),
+                                        channelBean.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                        channelBean.getAssetName())
+                                .id(channelBean.getName() + channelBean.getTxNonce())
+                                .build();
+
+                        String json_2 = rpc_1.post();
+
+                        if (json_2 == null) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    webSocket.cancel();
+                                }
+                            });
+                            return;
+                        }
+
+                        resp_2 = gson.fromJson(json_2, RefoundTransBean.class);
+
+                        req_3 = JSONObjectUtil.settleJSONMaker(wallet, channelBean, resp_2);
+
+                        String send_3 = req_3;
+                        webSocket.send(send_3);
+
+                        channelToBeRemoved.get(net).setState(ConfigList.CHANNEL_STATE_COOLING);
+                        wApp.saveData();
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                refreshUITotal();
+                                ToastUtil.show(getBaseContext(), "Channel \"" + channelBean.getAlias() + "\" is cooling down.");
+                            }
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onMessage(final WebSocket webSocket, final String text) {
+                super.onMessage(webSocket, text);
+                runOffUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String messageTypeStr = JSONObjectUtil.getMessageType(text);
+
+                        if ("SettleSign".equals(messageTypeStr)) {
+                            resp_4 = gson.fromJson(text, ACSettleSignBean.class);
+                            rpc_5 = new JSONRpcClient.Builder()
+                                    .net(WalletApplication.getNetUrlForNEO())
+                                    .method("sendrawtransaction")
+                                    .params(resp_4.getMessageBody().getSettlement().getOriginalData().getTxData() + resp_4.getMessageBody().getSettlement().getOriginalData().getWitness().replace("{signSelf}", NeoSignUtil.signToHex(resp_4.getMessageBody().getSettlement().getOriginalData().getTxData(), wallet.getPrivateKey())).replace("{signOther}", resp_4.getMessageBody().getSettlement().getTxDataSign()))
+                                    .id(channelBean.getName() + channelBean.getTxNonce() + "DISMANTLE")
+                                    .build();
+
+                            String json_6 = rpc_5.post();
+
+                            if (json_6 == null) {
+                                webSocket.cancel();
+                                return;
+                            }
+
+                            resp_6 = gson.fromJson(json_6, SendrawtransactionBean.class);
+
+                            boolean dismantleResult = resp_6.isResult();
+                            if (!dismantleResult) {
+                                webSocket.cancel();
+                                return;
+                            }
+
+                            return;
+                        }
+
+                        if ("DeleteChannel".equals(messageTypeStr)) {
+                            // No such need recent. Just delete it, not mark it.
+                            // channelToBeRemoved.get(net).setState(ConfigList.CHANNEL_STATE_DISMANTLED);
+                            wApp.getChannelList().remove(channelToBeRemoved);
+                            wApp.saveData();
+
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    obtainBalance();
+                                    refreshUITotal();
+                                    ToastUtil.show(getBaseContext(), "Channel \"" + channelBean.getAlias() + "\" was dismantled.");
+                                }
+                            });
+                            webSocket.close(1000, null);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                super.onFailure(webSocket, t, response);
+                runOffUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        channelToBeRemoved.get(net).setState(ConfigList.CHANNEL_STATE_CLEAR);
+                        wApp.saveData();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                refreshUITotal();
+                                ToastUtil.show(getBaseContext(), "Implicit problem exists.");
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
     /* ---------------------------------- INNER CLASSES ---------------------------------- */

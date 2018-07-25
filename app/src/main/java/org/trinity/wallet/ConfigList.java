@@ -25,6 +25,7 @@ public final class ConfigList {
     public static final int CHANGE_PASSWORD_RESULT = 3;
     public static final int SCAN_RESULT = -1;
 
+    public static final int BLOCK_SYNC_TIME = 15;
     public static final double POST_TIME_AT_LEAST = 0.2;
     public static final int READ_TIME_OUT = 20;
     public static final int WRITE_TIME_OUT = 20;
@@ -41,10 +42,10 @@ public final class ConfigList {
     public static final int QR_CODE_WIDTH = 200;
     public static final int QR_CODE_HEIGHT = 200;
     public static final int QR_MARGIN = 1;
-    public static final String CHANNEL_STATUS_HEATING = "Heating";
-    public static final String CHANNEL_STATUS_CLEAR = "Clear";
-    public static final String CHANNEL_STATUS_COOLING = "Cooling";
-    public static final String CHANNEL_STATUS_DISMANTLED = "Dismantled";
+    public static final String CHANNEL_STATE_HEATING = "Heating";
+    public static final String CHANNEL_STATE_CLEAR = "Clear";
+    public static final String CHANNEL_STATE_COOLING = "Cooling";
+    public static final String CHANNEL_STATE_DISMANTLED = "Dismantled";
     public static final String GATEWAY_SPV_PORT = "8766";
 
 

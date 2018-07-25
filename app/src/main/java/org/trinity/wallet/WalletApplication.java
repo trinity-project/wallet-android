@@ -1,5 +1,6 @@
 package org.trinity.wallet;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
@@ -10,6 +11,7 @@ import com.google.gson.reflect.TypeToken;
 import com.securepreferences.SecurePreferences;
 
 import org.trinity.util.android.QRCodeUtil;
+import org.trinity.util.thread.ExecutorUtil;
 import org.trinity.wallet.entity.ChannelBean;
 import org.trinity.wallet.entity.RecordBean;
 
@@ -19,13 +21,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import neoutils.Neoutils;
 import neoutils.Wallet;
 
+@SuppressLint("ApplySharedPref")
 public final class WalletApplication extends Application {
-
     /**
      * The instance of app.
      */
@@ -41,8 +42,12 @@ public final class WalletApplication extends Application {
     /**
      * The thread pool.
      */
-    // TODO extend the thread pool.
     private static ExecutorService ioExecutor;
+
+    static {
+        ioExecutor = ExecutorUtil.getHighIOModeDynamicThreadPool();
+    }
+
     /**
      * The identity verify.
      */
@@ -72,6 +77,7 @@ public final class WalletApplication extends Application {
     private SharedPreferences identityVerifyPrefs;
 
     // ====== STATIC GETTER ====== //
+
     public static WalletApplication getInstance() {
         return instance;
     }
@@ -96,11 +102,12 @@ public final class WalletApplication extends Application {
         return magic;
     }
 
+    // ====== LIFE CYCLE AND METHODS ====== //
+
     @Override
     public void onCreate() {
         super.onCreate();
         instance = this;
-        ioExecutor = Executors.newSingleThreadExecutor();
     }
 
     public synchronized boolean isFirstTime() {
@@ -114,7 +121,7 @@ public final class WalletApplication extends Application {
         SharedPreferences.Editor editorFirstTimeUse = first_time_use.edit();
         editorFirstTimeUse.clear();
         editorFirstTimeUse.putString(NOT_FIRST_TIME, NOT_FIRST_TIME);
-        editorFirstTimeUse.apply();
+        editorFirstTimeUse.commit();
 
         String oldPassword = passwordOnRAM;
         boolean tranOldPref = oldPassword != null;
@@ -125,7 +132,7 @@ public final class WalletApplication extends Application {
             SharedPreferences.Editor old_Editor = old_IDPrefs.edit();
 
             old_Editor.remove(ConfigList.SAVE_USER_PASSWORD);
-            old_Editor.apply();
+            old_Editor.commit();
 
             old_All_Map = new LinkedHashMap<>();
             String _SAVE_VALUE;
@@ -138,7 +145,7 @@ public final class WalletApplication extends Application {
             }
 
             old_Editor.clear();
-            old_Editor.apply();
+            old_Editor.commit();
         }
 
         SharedPreferences new_IDPref = new SecurePreferences(this.getBaseContext(), newPassword, "user_prefs.xml");
@@ -153,7 +160,7 @@ public final class WalletApplication extends Application {
 
         new_Editor.remove(ConfigList.SAVE_USER_PASSWORD);
         new_Editor.putString(ConfigList.SAVE_USER_PASSWORD, newPassword);
-        new_Editor.apply();
+        new_Editor.commit();
         identityVerifyPrefs = new_IDPref;
 
         passwordOnRAM = newPassword;
@@ -179,7 +186,7 @@ public final class WalletApplication extends Application {
             loadData();
         }
         editor.putString(ConfigList.SAVE_NET, net);
-        editor.apply();
+        editor.commit();
     }
 
     public synchronized void loadGlobal() {
@@ -208,7 +215,7 @@ public final class WalletApplication extends Application {
         editor.remove(ConfigList.SAVE_RECORD_LIST);
         editor.putString(ConfigList.SAVE_CHANNEL_LIST, gson.toJson(channelList));
         editor.putString(ConfigList.SAVE_RECORD_LIST, gson.toJson(recordList));
-        editor.apply();
+        editor.commit();
     }
 
     public synchronized void loadData() {
@@ -275,7 +282,6 @@ public final class WalletApplication extends Application {
         // Save the wallet via user password.
         saveGlobal();
     }
-
 
     // ====== NORMAL GETTER SETTER ====== //
 

@@ -1735,6 +1735,7 @@ public class MainActivity extends BaseActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
+                                    refreshUITotal();
                                     ToastUtil.show(getBaseContext(), "Channel \"" + aliasTrim + "\" was clear.");
                                 }
                             });

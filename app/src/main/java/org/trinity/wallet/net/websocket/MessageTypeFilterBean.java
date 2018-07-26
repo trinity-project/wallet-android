@@ -1,6 +1,6 @@
 package org.trinity.wallet.net.websocket;
 
-public class MessageTypeFilterBean {
+public class MessageTypeFilterBean extends BaseWebSocketBean {
     private String MessageType;
 
     public String getMessageType() {

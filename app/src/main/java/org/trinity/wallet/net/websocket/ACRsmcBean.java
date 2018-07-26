@@ -1,6 +1,6 @@
 package org.trinity.wallet.net.websocket;
 
-public class ACRsmcBean {
+public class ACRsmcBean extends BaseWebSocketBean {
     private String MessageType = "Rsmc";
     private String Sender;
     private String Receiver;

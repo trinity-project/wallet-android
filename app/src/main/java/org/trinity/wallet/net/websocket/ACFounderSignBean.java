@@ -1,7 +1,5 @@
 package org.trinity.wallet.net.websocket;
 
-import org.trinity.wallet.net.websocket.BaseWebSocketBean;
-
 public class ACFounderSignBean extends BaseWebSocketBean {
     private String MessageType = "FounderSign";
     private String Sender;

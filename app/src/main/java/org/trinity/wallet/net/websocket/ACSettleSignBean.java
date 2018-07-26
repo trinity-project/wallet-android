@@ -1,6 +1,6 @@
 package org.trinity.wallet.net.websocket;
 
-public class ACSettleSignBean {
+public class ACSettleSignBean extends BaseWebSocketBean {
     private String MessageType;
     private String Sender;
     private String Receiver;

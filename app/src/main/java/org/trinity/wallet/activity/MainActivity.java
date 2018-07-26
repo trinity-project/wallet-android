@@ -78,6 +78,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -726,34 +727,20 @@ public class MainActivity extends BaseActivity {
     }
 
     private void refreshChannelUI() {
-        String net = wApp.getNet();
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-
         int childCount = channelContainer.getChildCount();
         if (childCount > 1) {
             channelContainer.removeViews(1, childCount - 1);
         }
 
-        if (channelList == null) {
+        List<ChannelBean> channelDesc = currentNetChannelDesc();
+        if (channelDesc.size() == 0) {
             channelEmpty.setVisibility(View.VISIBLE);
             return;
         }
 
-        ChannelBean channelBean;
-        int nowNetChannelCount = 0;
         channelEmpty.setVisibility(View.GONE);
-        for (int index = channelList.size() - 1; index >= 0; index--) {
-            Map<String, ChannelBean> channelBeanWithType = channelList.get(index);
-            Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
-            if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
-                nowNetChannelCount++;
-                channelBean = channelBeanWithType.get(net);
-                addChannelView(channelBean);
-            }
-        }
-
-        if (nowNetChannelCount == 0) {
-            channelEmpty.setVisibility(View.VISIBLE);
+        for (ChannelBean channelBean : channelDesc) {
+            addChannelView(channelBean);
         }
     }
 
@@ -830,6 +817,26 @@ public class MainActivity extends BaseActivity {
 
         billContainer.addView(billView);
         billEmpty.setVisibility(View.GONE);
+    }
+
+    private List<ChannelBean> currentNetChannelDesc() {
+        String net = wApp.getNet();
+        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
+
+        List<ChannelBean> currentDesc = new ArrayList<>();
+        if (channelList != null) {
+            ChannelBean channelBeanFor;
+            for (int index = channelList.size() - 1; index >= 0; index--) {
+                Map<String, ChannelBean> channelBeanWithType = channelList.get(index);
+                Iterator<String> typeIterator = channelBeanWithType.keySet().iterator();
+                if (typeIterator.hasNext() && net.equals(typeIterator.next())) {
+                    channelBeanFor = channelBeanWithType.get(net);
+                    currentDesc.add(channelBeanFor);
+                }
+            }
+        }
+
+        return currentDesc;
     }
 
     /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
@@ -1020,7 +1027,7 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        final Boolean isValidPayCode = attemptRTransaction();
+        final Boolean isValidPayCode = attemptHRTransaction();
 
         if (!isValidPayCode) {
             inputTransferTo.setError("Invalid input.");
@@ -1031,11 +1038,11 @@ public class MainActivity extends BaseActivity {
     /**
      * @return true: Is a payment code. false: Not a payment code.
      */
-    private boolean attemptRTransaction() {
+    private boolean attemptHRTransaction() {
         final Wallet wallet = wApp.getWallet();
         final String net = wApp.getNet();
-        List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
-        Map<String, String> assetIdMap = ConfigList.ASSET_ID_MAP;
+        final List<ChannelBean> channelDesc = currentNetChannelDesc();
+        final Map<String, String> assetIdMap = ConfigList.ASSET_ID_MAP;
 
         if (wallet == null) {
             ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + ".");
@@ -1050,7 +1057,7 @@ public class MainActivity extends BaseActivity {
             return false;
         }
 
-        if (channelList == null) {
+        if (channelDesc.size() == 0) {
             ToastUtil.show(getBaseContext(), "Please add a channel.");
             return true;
         }
@@ -1066,126 +1073,179 @@ public class MainActivity extends BaseActivity {
         final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
 
         ChannelBean channelBean = null;
-        ChannelBean channelBeanFor;
-        List<ChannelBean> currentNetChannelList = new ArrayList<>();
-        for (Map<String, ChannelBean> channelBeanWithNetType : channelList) {
-            Iterator<String> keySetIterator = channelBeanWithNetType.keySet().iterator();
-            if (keySetIterator.hasNext() && net.equals(keySetIterator.next())) {
-                channelBeanFor = channelBeanWithNetType.get(net);
-                currentNetChannelList.add(channelBeanFor);
-                if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
-                    channelBean = channelBeanFor;
-                    break;
-                }
-            }
-        }
-
-        if (currentNetChannelList.size() == 0) {
-            return true;
-        }
-
-        if (channelBean == null) {
-            // TODO H transaction.
-            for (ChannelBean channelH : currentNetChannelList) {
-                channelBean = channelH;
-            }
-        }
-
-        final double price = paymentCodeBean.getPrice();
-        String priceTrim = BigDecimal.valueOf(price).toPlainString();
-
-        if (price > 10000000000000d) {
-            ToastUtil.show(getBaseContext(), "Payment code info error.\nPrice is 10000000000000 at most.");
-            return true;
-        }
-
-        String assetName = "";
-        for (String assetNameInMap : assetIdMap.keySet()) {
-            String addOx = PrefixUtil.addOx(paymentCodeBean.getAssetId());
-            if (assetIdMap.get(assetNameInMap).equals(addOx)) {
-                assetName = assetNameInMap;
+        for (ChannelBean channelBeanFor : channelDesc) {
+            if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
+                channelBean = channelBeanFor;
                 break;
             }
         }
 
-        boolean isCoinInteger = !priceTrim.contains(".");
-        boolean isCoinDigitsValid = !isCoinInteger && (priceTrim.length() - priceTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
-
-        boolean isCoinAmountOK = false;
-        boolean isAmountAffordable = false;
-
-        BigDecimal amountBigDecimal = BigDecimal.valueOf(price);
-        if (getString(R.string.tnc).equals(assetName)) {
-            if (isCoinInteger || isCoinDigitsValid) {
-                isCoinAmountOK = true;
-            } else {
-                ToastUtil.show(getBaseContext(), "Payment code info error.\nTNC balance is a decimal up to 8 digits.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainTNC())) <= 0;
-        } else if (getString(R.string.neo).equals(assetName)) {
-            if (isCoinInteger) {
-                isCoinAmountOK = true;
-            } else {
-                ToastUtil.show(getBaseContext(), "Payment code info error.\nNEO balance is a integer.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainNEO())) <= 0;
-        } else if (getString(R.string.gas).equals(assetName)) {
-            if (isCoinInteger || isCoinDigitsValid) {
-                isCoinAmountOK = true;
-            } else {
-                ToastUtil.show(getBaseContext(), "Payment code info error.\nGAS balance is a decimal up to 8 digits.");
-            }
-            isAmountAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(wApp.getChainGAS())) <= 0;
-        }
-
-        if (!isCoinAmountOK) {
-            return true;
-        }
-
-        if (!isAmountAffordable) {
-            ToastUtil.show(getBaseContext(), "Balance of current asset is not enough.");
-            return true;
-        }
-
-        channelBean.setTxNonce(channelBean.getTxNonce() + 1);
-        // C++ is called cpp.
-        final int txNoncePp = channelBean.getTxNonce();
         final ChannelBean channelBeanFinal = channelBean;
-
-        btnTransferTo.setClickable(false);
-
-        WebSocketClient webSocketClient = new WebSocketClient.Builder()
-                .url(TNAPUtil.getWs(sTNAPSpv))
-                .build();
-
-        webSocketClient.connect(new WebSocketListener() {
-            private JSONRpcClient rpc_1;
-            private FunderTransactionBean resp_2;
-            private ACRsmcBean req_3;
-            private ACRsmcSignBean resp_4;
-            private ACRsmcBean resp_5;
-            private ACRsmcSignBean req_6;
-            private ACRsmcBean req_7;
-            private ACRsmcBean resp_8;
+        runOffUiThread(new Runnable() {
+            private transient ChannelBean channelBeanFinalR;
+            private transient double price;
+            private transient int txNoncePp;
+            private CountDownLatch latch = new CountDownLatch(1);
 
             @Override
-            public void onOpen(final WebSocket webSocket, Response response) {
-                super.onOpen(webSocket, response);
-                runOffUiThread(new Runnable() {
+            public void run() {
+                attemptHTransaction();
+
+                runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        channelBalanceCheck();
+                        latch.countDown();
+                    }
+                });
+
+                try {
+                    latch.await();
+                } catch (InterruptedException ignored) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            btnTransferTo.setClickable(true);
+                            ToastUtil.show(getBaseContext(), "Too much works in background, please wait a minute.");
+                        }
+                    });
+                    return;
+                }
+
+                attemptRTransaction();
+            }
+
+            private void attemptHTransaction() {
+                if (channelBeanFinal != null) {
+                    return;
+                }
+
+                ChannelBean oldestChannel = channelDesc.get(channelDesc.size() - 1);
+                WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                        .url(TNAPUtil.getWs(TNAPUtil.getTNAPSpv(oldestChannel.getTNAP(), wallet)))
+                        .build();
+
+                webSocketClient.connect(new WebSocketListener() {
+                    @Override
+                    public void onOpen(WebSocket webSocket, Response response) {
+                        super.onOpen(webSocket, response);
+
+                    }
+
+                    @Override
+                    public void onMessage(WebSocket webSocket, String text) {
+                        super.onMessage(webSocket, text);
+                    }
+
+                    @Override
+                    public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                        super.onFailure(webSocket, t, response);
+                    }
+                });
+                // TODO H transaction.
+
+                List<ChannelBean> nextList = new ArrayList<>();
+
+                for (ChannelBean channelNext : channelDesc) {
+                    // if (xxx)
+                    channelBeanFinalR = channelNext;
+                }
+            }
+
+            private void channelBalanceCheck() {
+                price = paymentCodeBean.getPrice();
+                String priceTrim = BigDecimal.valueOf(price).toPlainString();
+
+                if (price > 10000000000000d) {
+                    ToastUtil.show(getBaseContext(), "Payment code info error.\nPrice is 10000000000000 at most.");
+                    return;
+                }
+
+                String assetName = "";
+                for (String assetNameInMap : assetIdMap.keySet()) {
+                    String addOx = PrefixUtil.addOx(paymentCodeBean.getAssetId());
+                    if (assetIdMap.get(assetNameInMap).equals(addOx)) {
+                        assetName = assetNameInMap;
+                        break;
+                    }
+                }
+
+                boolean isCoinInteger = !priceTrim.contains(".");
+                boolean isCoinDigitsValid = !isCoinInteger && (priceTrim.length() - priceTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
+
+                boolean isCoinPriceOK = false;
+                boolean isPriceAffordable = false;
+
+                BigDecimal amountBigDecimal = BigDecimal.valueOf(price);
+                if (getString(R.string.tnc).equals(assetName)) {
+                    if (isCoinInteger || isCoinDigitsValid) {
+                        isCoinPriceOK = true;
+                    } else {
+                        ToastUtil.show(getBaseContext(), "Payment code info error.\nTNC balance is a decimal up to 8 digits.");
+                    }
+                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
+                } else if (getString(R.string.neo).equals(assetName)) {
+                    if (isCoinInteger) {
+                        isCoinPriceOK = true;
+                    } else {
+                        ToastUtil.show(getBaseContext(), "Payment code info error.\nNEO balance is a integer.");
+                    }
+                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
+                } else if (getString(R.string.gas).equals(assetName)) {
+                    if (isCoinInteger || isCoinDigitsValid) {
+                        isCoinPriceOK = true;
+                    } else {
+                        ToastUtil.show(getBaseContext(), "Payment code info error.\nGAS balance is a decimal up to 8 digits.");
+                    }
+                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
+                }
+
+                if (!isCoinPriceOK) {
+                    return;
+                }
+
+                if (!isPriceAffordable) {
+                    ToastUtil.show(getBaseContext(), "Balance of current asset is not enough.");
+                    return;
+                }
+
+                channelBeanFinalR.setTxNonce(channelBeanFinalR.getTxNonce() + 1);
+                // C++ is called cpp.
+                txNoncePp = channelBeanFinalR.getTxNonce();
+
+                btnTransferTo.setClickable(false);
+            }
+
+            private void attemptRTransaction() {
+                WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                        .url(TNAPUtil.getWs(sTNAPSpv))
+                        .build();
+
+                webSocketClient.connect(new WebSocketListener() {
+                    private JSONRpcClient rpc_1;
+                    private FunderTransactionBean resp_2;
+                    private ACRsmcBean req_3;
+                    private ACRsmcSignBean resp_4;
+                    private ACRsmcBean resp_5;
+                    private ACRsmcSignBean req_6;
+                    private ACRsmcBean req_7;
+                    private ACRsmcBean resp_8;
+
+                    @Override
+                    public void onOpen(final WebSocket webSocket, Response response) {
+                        super.onOpen(webSocket, response);
                         rpc_1 = new JSONRpcClient.Builder()
                                 .net(WalletApplication.getNetUrl())
                                 .method("FunderTransaction")
                                 .params(TNAPUtil.getPublicKey(sTNAP),
                                         TNAPUtil.getPublicKey(sTNAPSpv),
-                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
-                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
-                                        String.valueOf(channelBeanFinal.getBalance()),
-                                        String.valueOf(channelBeanFinal.getDeposit() + channelBeanFinal.getDeposit() - channelBeanFinal.getBalance()),
-                                        channelBeanFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
-                                        channelBeanFinal.getAssetName())
-                                .id(channelBeanFinal.getName() + txNoncePp)
+                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                        String.valueOf(channelBeanFinalR.getBalance()),
+                                        String.valueOf(channelBeanFinalR.getDeposit() + channelBeanFinalR.getDeposit() - channelBeanFinalR.getBalance()),
+                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
+                                        channelBeanFinalR.getAssetName())
+                                .id(channelBeanFinalR.getName() + txNoncePp)
                                 .build();
 
                         String json_2 = rpc_1.post();
@@ -1200,12 +1260,12 @@ public class MainActivity extends BaseActivity {
                         req_3 = new ACRsmcBean();
                         req_3.setSender(sTNAPSpv);
                         req_3.setReceiver(sTNAP);
-                        req_3.setChannelName(channelBeanFinal.getName());
+                        req_3.setChannelName(channelBeanFinalR.getName());
                         req_3.setTxNonce(txNoncePp);
                         ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
                         messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
                         messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
-                        messageBody_3.setAssetType(channelBeanFinal.getAssetName());
+                        messageBody_3.setAssetType(channelBeanFinalR.getAssetName());
                         messageBody_3.setValue(price);
                         messageBody_3.setRoleIndex(0);
                         messageBody_3.setComments(paymentCodeBean.getComment());
@@ -1214,15 +1274,10 @@ public class MainActivity extends BaseActivity {
                         String send_3 = gson.toJson(req_3);
                         webSocket.send(send_3);
                     }
-                });
-            }
 
-            @Override
-            public void onMessage(final WebSocket webSocket, final String text) {
-                super.onMessage(webSocket, text);
-                runOffUiThread(new Runnable() {
                     @Override
-                    public void run() {
+                    public void onMessage(final WebSocket webSocket, final String text) {
+                        super.onMessage(webSocket, text);
                         String messageTypeStr = JSONObjectUtil.getMessageType(text);
                         if ("RsmcSign".equals(messageTypeStr)) {
                             resp_4 = gson.fromJson(text, ACRsmcSignBean.class);
@@ -1281,7 +1336,7 @@ public class MainActivity extends BaseActivity {
                             return;
                         }
                         if ("UpdateChannel".equals(messageTypeStr)) {
-                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinal.getAssetName());
+                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinalR.getAssetName());
 
                             List<Map<String, BillBean>> billList = wApp.getBillList();
                             if (billList == null) {
@@ -1289,14 +1344,14 @@ public class MainActivity extends BaseActivity {
                             }
                             Map<String, BillBean> billBeanWithNetType = new HashMap<>();
                             billBeanWithNetType.put(net, new BillBean(
-                                    channelBeanFinal,
-                                    BigDecimalUtil.subtract(spvBalance, channelBeanFinal.getBalance()),
+                                    channelBeanFinalR,
+                                    BigDecimalUtil.subtract(spvBalance, channelBeanFinalR.getBalance()),
                                     0d,
                                     resp_4,
                                     resp_8));
 
                             billList.add(billBeanWithNetType);
-                            channelBeanFinal.setBalance(spvBalance);
+                            channelBeanFinalR.setBalance(spvBalance);
 
                             wApp.setBillList(billList);
                             runOnUiThread(new Runnable() {
@@ -1314,17 +1369,23 @@ public class MainActivity extends BaseActivity {
                             webSocket.close(1000, null);
                         }
                     }
+
+                    @Override
+                    public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                        super.onFailure(webSocket, t, response);
+                        t.printStackTrace();
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                btnTransferTo.setClickable(true);
+                                ToastUtil.show(getBaseContext(), "Implicit problem exists.");
+                            }
+                        });
+                    }
                 });
             }
-
-            @Override
-            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
-                super.onFailure(webSocket, t, response);
-                t.printStackTrace();
-                btnTransferTo.setClickable(true);
-                ToastUtil.show(getBaseContext(), "Implicit problem exists.");
-            }
         });
+
 
         return true;
     }

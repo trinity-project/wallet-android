@@ -3,6 +3,7 @@ package org.trinity.wallet.activity;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -63,9 +64,10 @@ import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
 import org.trinity.wallet.net.jsonrpc.GetBalanceBean;
 import org.trinity.wallet.net.jsonrpc.RefoundTransBean;
 import org.trinity.wallet.net.jsonrpc.SendrawtransactionBean;
-import org.trinity.wallet.net.jsonrpc.ValidateaddressBean;
+import org.trinity.wallet.net.websocket.ACAckRouterInfoBean;
 import org.trinity.wallet.net.websocket.ACFounderBean;
 import org.trinity.wallet.net.websocket.ACFounderSignBean;
+import org.trinity.wallet.net.websocket.ACGetRouterInfoBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
 import org.trinity.wallet.net.websocket.ACRsmcBean;
 import org.trinity.wallet.net.websocket.ACRsmcSignBean;
@@ -82,13 +84,13 @@ import java.util.concurrent.CountDownLatch;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import neoutils.Neoutils;
 import neoutils.Wallet;
 import okhttp3.Response;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import pub.devrel.easypermissions.EasyPermissions;
 
-// TODO Set error and toast should not do immediately, set them into activity toast List and set error map.
 public class MainActivity extends BaseActivity {
     /**
      * The activity object.
@@ -145,10 +147,10 @@ public class MainActivity extends BaseActivity {
     Toolbar toolbar;
     @BindView(R.id.titleTransfer)
     TextView titleTransfer;
-    @BindView(R.id.inputTransferTo)
-    EditText inputTransferTo;
-    @BindView(R.id.layTransferTo)
-    TextInputLayout layTransferTo;
+    @BindView(R.id.inputPaymentCodeAddress)
+    EditText inputPaymentCodeAddress;
+    @BindView(R.id.layPaymentCodeAddress)
+    TextInputLayout layPaymentCodeAddress;
     @BindView(R.id.inputAmount)
     EditText inputAmount;
     @BindView(R.id.layAmount)
@@ -163,8 +165,12 @@ public class MainActivity extends BaseActivity {
     RadioButton rdoItmGASTrans;
     @BindView(R.id.inputAssetsTrans)
     RadioGroup inputAssetsTrans;
-    @BindView(R.id.btnTransferTo)
-    Button btnTransferTo;
+    @BindView(R.id.btnPay)
+    Button btnPay;
+    @BindView(R.id.btnReceive)
+    Button btnReceive;
+    @BindView(R.id.paymentCodeQR)
+    ImageView paymentCodeQR;
     @BindView(R.id.titleSetupChannel)
     TextView titleSetupChannel;
     @BindView(R.id.inputTNAP)
@@ -231,6 +237,11 @@ public class MainActivity extends BaseActivity {
      * Last post happen time.
      */
     private long lastPostTimeMillis;
+    /**
+     * Web socket pool.
+     */
+    @NonNull
+    private List<Map<ChannelBean, WebSocket>> webSocketDesc = new ArrayList<>();
 
     /* ---------------------------------- ANDROID LIFE CYCLES ---------------------------------- */
 
@@ -256,6 +267,7 @@ public class MainActivity extends BaseActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        paymentCodeQR.callOnClick();
         if (resultCode == ConfigList.BACK_RESULT) {
             obtainBalance();
             return;
@@ -289,7 +301,7 @@ public class MainActivity extends BaseActivity {
                     // If the length of QR result is bigger than neo address(payment code always longer)
                     // and starts with "A" or "TN".
                     else if (scanResult.length() >= ConfigList.NEO_ADDRESS_LENGTH && (ConfigList.NEO_ADDRESS_FIRST.equals(scanResult.substring(0, 1)) || ConfigList.PAYMENT_CODE_FIRST.equals(scanResult.substring(0, 2)))) {
-                        inputTransferTo.setText(scanResult);
+                        inputPaymentCodeAddress.setText(scanResult);
                         tab.setSelectedItemId(R.id.navigationTransfer);
                         verifyAddress(false);
                     }
@@ -490,6 +502,9 @@ public class MainActivity extends BaseActivity {
 
         // Init account data.
         obtainBalance();
+
+        // Connect known channel.
+        connectChannels();
     }
 
     private void initToolbarMenu() {
@@ -567,7 +582,7 @@ public class MainActivity extends BaseActivity {
 
     private void initTabs() {
         // This is tab addressMode.
-        inputTransferTo.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        inputPaymentCodeAddress.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
@@ -577,7 +592,7 @@ public class MainActivity extends BaseActivity {
                 return false;
             }
         });
-        inputTransferTo.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+        inputPaymentCodeAddress.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean b) {
                 boolean onFocusOut = !b;
@@ -610,10 +625,27 @@ public class MainActivity extends BaseActivity {
 
         inputAssetsTrans.setOnCheckedChangeListener(onRadioCheckedChangeListener);
 
-        btnTransferTo.setOnClickListener(new View.OnClickListener() {
+        btnPay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 verifyAddress(true);
+            }
+        });
+
+        btnReceive.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                generatePaymentCode();
+            }
+        });
+
+        paymentCodeQR.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                view.setClickable(false);
+                ImageView imageView = (ImageView) view;
+                imageView.setImageBitmap(null);
+                imageView.requestLayout();
             }
         });
 
@@ -819,6 +851,21 @@ public class MainActivity extends BaseActivity {
         billEmpty.setVisibility(View.GONE);
     }
 
+    private void switchUIPaymentCodeOrAddress(boolean isPaymentCode) {
+        if (isPaymentCode) {
+            layAmount.setVisibility(View.GONE);
+            labelAssetsTrans.setVisibility(View.GONE);
+            inputAssetsTrans.setVisibility(View.GONE);
+        } else {
+            layAmount.setVisibility(View.VISIBLE);
+            labelAssetsTrans.setVisibility(View.VISIBLE);
+            inputAssetsTrans.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
+
+    @NonNull
     private List<ChannelBean> currentNetChannelDesc() {
         String net = wApp.getNet();
         List<Map<String, ChannelBean>> channelList = wApp.getChannelList();
@@ -839,12 +886,90 @@ public class MainActivity extends BaseActivity {
         return currentDesc;
     }
 
-    /* ---------------------------------- WEB CONNECT METHODS ---------------------------------- */
-
-    // TODO Connect all the channels for current net in list.
-    // TODO Inverted R transaction(in another way, receive an R transaction).
     private void connectChannels() {
+        final Wallet wallet = wApp.getWallet();
 
+        if (wallet == null) {
+            return;
+        }
+
+        final List<ChannelBean> channelDesc = currentNetChannelDesc();
+
+        runOffUiThread(new Runnable() {
+            @Override
+            public void run() {
+
+                // Recycle socket.
+                if (webSocketDesc.size() != 0) {
+                    List<Map<ChannelBean, WebSocket>> toBeRecycled = new ArrayList<>();
+                    ChannelBean connected;
+                    for (Map<ChannelBean, WebSocket> webSocketMap : webSocketDesc) {
+                        Iterator<ChannelBean> keySetIterator = webSocketMap.keySet().iterator();
+                        if (keySetIterator.hasNext()) {
+                            connected = keySetIterator.next();
+                            for (ChannelBean there : channelDesc) {
+                                if (connected == there) {
+                                    toBeRecycled.add(webSocketMap);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (toBeRecycled.size() != 0) {
+                        for (Map<ChannelBean, WebSocket> recycle : toBeRecycled) {
+                            webSocketDesc.remove(recycle);
+                        }
+                    }
+                }
+
+                // Set up socket.
+                if (channelDesc.size() != 0) {
+                    boolean shouldNew;
+                    for (ChannelBean channelBean : channelDesc) {
+                        shouldNew = true;
+                        for (Map<ChannelBean, WebSocket> webSocketMap : webSocketDesc) {
+                            Iterator<ChannelBean> keySetIterator = webSocketMap.keySet().iterator();
+                            if (keySetIterator.hasNext() && keySetIterator.next() == channelBean) {
+                                shouldNew = false;
+                                break;
+                            }
+                        }
+                        if (shouldNew) {
+                            WebSocket socket = connect(channelBean, wallet);
+                            HashMap<ChannelBean, WebSocket> added = new HashMap<>();
+                            added.put(channelBean, socket);
+                            webSocketDesc.add(added);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // TODO Inverted R transaction(in another way, receive an R transaction).
+    private WebSocket connect(ChannelBean channelBean, Wallet wallet) {
+        String sTNAP = channelBean.getTNAP();
+        String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
+        WebSocketClient webSocketClient = new WebSocketClient.Builder()
+                .url(TNAPUtil.getWs(sTNAPSpv))
+                .build();
+
+        return webSocketClient.connect(new WebSocketListener() {
+            @Override
+            public void onOpen(WebSocket webSocket, Response response) {
+                super.onOpen(webSocket, response);
+            }
+
+            @Override
+            public void onMessage(WebSocket webSocket, String text) {
+                super.onMessage(webSocket, text);
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, @Nullable Response response) {
+                super.onFailure(webSocket, t, response);
+            }
+        });
     }
 
     private synchronized void obtainBalance() {
@@ -929,12 +1054,129 @@ public class MainActivity extends BaseActivity {
         }
     }
 
-    private synchronized void verifyAddress(final boolean doPay) {
-        inputTransferTo.setError(null);
+    private synchronized void generatePaymentCode() {
+        inputPaymentCodeAddress.setError(null);
         inputAmount.setError(null);
-        IMEUtil.hideIME(btnTransferTo);
 
-        // Wallet.
+        Wallet wallet = wApp.getWallet();
+
+        if (wallet == null) {
+            ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
+            return;
+        }
+
+        inputPaymentCodeAddress.setText(null);
+
+        if (layAmount.getVisibility() == View.GONE) {
+            switchUIPaymentCodeOrAddress(false);
+            inputAmount.requestFocus();
+            return;
+        }
+
+        String amountTrim = inputAmount.getText().toString().trim();
+
+        Double amountDouble = Double.valueOf(amountTrim);
+        if (amountDouble > 10000000000000d) {
+            inputAmount.setError("Deposit at most 10000000000000.");
+            inputAmount.requestFocus();
+            return;
+        }
+
+        RadioButton checked = findViewById(inputAssetsTrans.getCheckedRadioButtonId());
+        String assetName = checked.getText().toString().trim().toUpperCase(Locale.getDefault());
+
+        boolean isCoinInteger = !amountTrim.contains(".");
+        boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
+
+        boolean isCoinAmountOK = false;
+
+        if (getString(R.string.tnc).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("TNC balance is a decimal up to 8 digits.");
+            }
+        } else if (getString(R.string.neo).equals(assetName)) {
+            if (isCoinInteger) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("NEO balance is a integer.");
+            }
+        } else if (getString(R.string.gas).equals(assetName)) {
+            if (isCoinInteger || isCoinDigitsValid) {
+                isCoinAmountOK = true;
+            } else {
+                inputAmount.setError("GAS balance is a decimal up to 8 digits.");
+            }
+        }
+
+        if (!isCoinAmountOK) {
+            inputAmount.requestFocus();
+            return;
+        }
+
+        List<ChannelBean> channelDesc = currentNetChannelDesc();
+
+        if (channelDesc.size() == 0) {
+            ToastUtil.show(getBaseContext(), getString(R.string.set_up_channel_first));
+            tab.setSelectedItemId(R.id.navigationSetupChannel);
+            return;
+        }
+
+        ChannelBean oldestChannel = channelDesc.get(channelDesc.size() - 1);
+
+        String sTNAP = oldestChannel.getTNAP();
+        String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
+
+        PaymentCodeBean paymentCodeBean = new PaymentCodeBean();
+        paymentCodeBean.setTNAP(sTNAPSpv);
+        paymentCodeBean.setRandomHash(UUIDUtil.getRandomLowerNoLine());
+        paymentCodeBean.setAssetId(PrefixUtil.trim0x(ConfigList.ASSET_ID_MAP.get(assetName)));
+        paymentCodeBean.setPrice(amountDouble);
+        paymentCodeBean.setComment("Trinity wallet generate.");
+
+        final String encode = PaymentCodeUtil.encode(paymentCodeBean);
+        if (encode == null) {
+            ToastUtil.show(getBaseContext(), "Current charset may not be supported.");
+            return;
+        }
+        runOffUiThread(new Runnable() {
+            private CountDownLatch latch_UI_PaymentQR_Shown = new CountDownLatch(1);
+
+            @Override
+            public void run() {
+                final Bitmap paymentBitmap = QRCodeUtil.encodeAsBitmap(encode, ConfigList.QR_CODE_WIDTH, ConfigList.QR_CODE_HEIGHT);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        paymentCodeQR.setImageBitmap(paymentBitmap);
+                        paymentCodeQR.requestLayout();
+                        latch_UI_PaymentQR_Shown.countDown();
+                    }
+                });
+                try {
+                    latch_UI_PaymentQR_Shown.await();
+                } catch (InterruptedException ignored) {
+                    ToastUtil.show(getBaseContext(), "Too much works in background, please try again later.");
+                }
+
+                paymentCodeQR.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tabsContainer.fullScroll(ScrollView.FOCUS_DOWN);
+                        paymentCodeQR.setClickable(true);
+                    }
+                });
+            }
+        });
+    }
+
+    private synchronized void verifyAddress(final boolean doPay) {
+        inputPaymentCodeAddress.setError(null);
+        inputAmount.setError(null);
+        IMEUtil.hideIME(btnPay);
+
         final Wallet wallet = wApp.getWallet();
 
         if (doPay && layAmount.getVisibility() == View.GONE) {
@@ -946,82 +1188,51 @@ public class MainActivity extends BaseActivity {
         }
         obtainBalance();
 
-        final String toAddressTrim = inputTransferTo.getText().toString().trim();
+        final String toAddressTrim = inputPaymentCodeAddress.getText().toString().trim();
         if ("".equals(toAddressTrim) || wallet.getAddress().equals(toAddressTrim)) {
             if (doPay) {
-                // Invalid text error.
-                inputTransferTo.setError("Invalid input.");
-                inputTransferTo.requestFocus();
+                inputPaymentCodeAddress.setError("Invalid input.");
+                inputPaymentCodeAddress.requestFocus();
                 payCodeMode(true);
             }
             return;
         }
 
-        boolean isLooksLikeAnAddress = inputTransferTo.length() == ConfigList.NEO_ADDRESS_LENGTH && ConfigList.NEO_ADDRESS_FIRST.equals(toAddressTrim.substring(0, 1));
-
-        if (!isLooksLikeAnAddress) {
-            payCodeMode(doPay);
-            return;
-        }
-
-        // Send post to verify to address.
-        Runnable service = new Runnable() {
+        runOffUiThread(new Runnable() {
             @Override
             public void run() {
-                JSONRpcClient client = new JSONRpcClient.Builder()
-                        .net(WalletApplication.getNetUrlForNEO())
-                        .method("validateaddress")
-                        .params(toAddressTrim)
-                        .id(toAddressTrim + UUIDUtil.getRandomLowerNoLine())
-                        .build();
-                final String response = client.post();
+                boolean isValid = Neoutils.validateNEOAddress(toAddressTrim);
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (response == null) {
-                            ToastUtil.show(getBaseContext(), "Implicit problem exists.");
-                            return;
-                        }
+                if (!isValid) {
+                    payCodeMode(doPay);
+                    return;
+                }
 
-                        final ValidateaddressBean responseBean;
-                        responseBean = gson.fromJson(response, ValidateaddressBean.class);
-                        // The User input is a neo address.
-                        boolean isValid = responseBean.getResult().isIsvalid();
-
-                        if (!isValid) {
-                            if (doPay) {
-                                payCodeMode(true);
-                            }
-                            return;
-                        }
-
-                        // Show addressMode window.
-                        if (layAmount.getVisibility() == View.GONE) {
-                            layAmount.setVisibility(View.VISIBLE);
-                            labelAssetsTrans.setVisibility(View.VISIBLE);
-                            inputAssetsTrans.setVisibility(View.VISIBLE);
-                            if (doPay) {
+                // If not address mode now, show address mode view.
+                if (layAmount.getVisibility() == View.GONE) {
+                    switchUIPaymentCodeOrAddress(false);
+                    if (doPay) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
                                 ToastUtil.show(getBaseContext(), "Address verified.");
                                 inputAmount.requestFocus();
                             }
-                            return;
-                        }
-
-                        if (doPay) {
-                            addressMode(toAddressTrim);
-                        }
+                        });
                     }
-                });
+                    return;
+                }
+
+                // If button calls and address mode view now, pay.
+                if (doPay) {
+                    addressMode(toAddressTrim);
+                }
             }
-        };
-        runOffUiThread(service);
+        });
     }
 
     private void payCodeMode(boolean doPay) {
-        layAmount.setVisibility(View.GONE);
-        labelAssetsTrans.setVisibility(View.GONE);
-        inputAssetsTrans.setVisibility(View.GONE);
+        switchUIPaymentCodeOrAddress(true);
 
         if (!doPay) {
             return;
@@ -1030,8 +1241,8 @@ public class MainActivity extends BaseActivity {
         final Boolean isValidPayCode = attemptHRTransaction();
 
         if (!isValidPayCode) {
-            inputTransferTo.setError("Invalid input.");
-            inputTransferTo.requestFocus();
+            inputPaymentCodeAddress.setError("Invalid input.");
+            inputPaymentCodeAddress.requestFocus();
         }
     }
 
@@ -1042,6 +1253,7 @@ public class MainActivity extends BaseActivity {
         final Wallet wallet = wApp.getWallet();
         final String net = wApp.getNet();
         final List<ChannelBean> channelDesc = currentNetChannelDesc();
+        final String magic = WalletApplication.getMagic();
         final Map<String, String> assetIdMap = ConfigList.ASSET_ID_MAP;
 
         if (wallet == null) {
@@ -1049,7 +1261,7 @@ public class MainActivity extends BaseActivity {
             return true;
         }
 
-        String toAddress = inputTransferTo.getText().toString();
+        String toAddress = inputPaymentCodeAddress.getText().toString();
         final String paymentCodeTrim = toAddress.trim();
         final PaymentCodeBean paymentCodeBean = PaymentCodeUtil.decode(paymentCodeTrim);
 
@@ -1062,19 +1274,33 @@ public class MainActivity extends BaseActivity {
             return true;
         }
 
-        final String sTNAP = paymentCodeBean.getsTNAP();
+        final String sTNAPPay = paymentCodeBean.getTNAP();
 
-        if (!TNAPUtil.isValid(sTNAP)) {
-            inputTransferTo.setError("Invalid input.");
-            inputTransferTo.requestFocus();
+        if (!TNAPUtil.isValid(sTNAPPay)) {
+            inputPaymentCodeAddress.setError("Invalid input.");
+            inputPaymentCodeAddress.requestFocus();
             return false;
         }
 
-        final String sTNAPSpv = TNAPUtil.getTNAPSpv(sTNAP, wallet);
+        String assetNameFor = null;
+        for (String assetNameInMap : assetIdMap.keySet()) {
+            String add0x = PrefixUtil.add0x(paymentCodeBean.getAssetId());
+            if (assetIdMap.get(assetNameInMap).equals(add0x)) {
+                assetNameFor = assetNameInMap;
+                break;
+            }
+        }
+
+        if (assetNameFor == null) {
+            ToastUtil.show(getBaseContext(), "Unsupported coin type.");
+            return true;
+        }
+
+        final String assetName = assetNameFor;
 
         ChannelBean channelBean = null;
         for (ChannelBean channelBeanFor : channelDesc) {
-            if (channelBeanFor.getTNAP().equals(sTNAP) && PrefixUtil.trimOx(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
+            if (channelBeanFor.getTNAP().equals(sTNAPPay) && PrefixUtil.trim0x(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
                 channelBean = channelBeanFor;
                 break;
             }
@@ -1085,56 +1311,102 @@ public class MainActivity extends BaseActivity {
             private transient ChannelBean channelBeanFinalR;
             private transient double price;
             private transient int txNoncePp;
-            private CountDownLatch latch = new CountDownLatch(1);
+            private String sTNAPR;
+            private String sTNAPSpvR;
+
+            private boolean balanceOk;
+            // TODO            private CountDownLatch latch_UI_PayCodeInfoUserConfirm = new CountDownLatch(1);
+            private CountDownLatch latch_UI_PayBalanceAffordable = new CountDownLatch(1);
+// TODO            private CountDownLatch latch_UI_FeeUserConfirm = new CountDownLatch(1);
 
             @Override
             public void run() {
                 attemptHTransaction();
-
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        channelBalanceCheck();
-                        latch.countDown();
+                        balanceOk = checkChannelBalance();
+                        latch_UI_PayBalanceAffordable.countDown();
                     }
                 });
 
                 try {
-                    latch.await();
+                    latch_UI_PayBalanceAffordable.await();
                 } catch (InterruptedException ignored) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            btnTransferTo.setClickable(true);
-                            ToastUtil.show(getBaseContext(), "Too much works in background, please wait a minute.");
+                            btnPay.setClickable(true);
+                            ToastUtil.show(getBaseContext(), "Too much works in background, please try again later.");
                         }
                     });
                     return;
                 }
 
-                attemptRTransaction();
+                if (balanceOk) {
+                    attemptRTransaction();
+                }
             }
 
             private void attemptHTransaction() {
                 if (channelBeanFinal != null) {
+                    channelBeanFinalR = channelBeanFinal;
                     return;
                 }
 
                 ChannelBean oldestChannel = channelDesc.get(channelDesc.size() - 1);
+
+                final String sTNAPH = oldestChannel.getTNAP();
+                final String sTNAPSpvH = TNAPUtil.getTNAPSpv(sTNAPH, wallet);
+
                 WebSocketClient webSocketClient = new WebSocketClient.Builder()
-                        .url(TNAPUtil.getWs(TNAPUtil.getTNAPSpv(oldestChannel.getTNAP(), wallet)))
+                        .url(TNAPUtil.getWs(sTNAPSpvH))
                         .build();
 
                 webSocketClient.connect(new WebSocketListener() {
+                    private ACGetRouterInfoBean req_1;
+                    private ACAckRouterInfoBean resp_2;
+                    private JSONRpcClient rpc_3;
+
                     @Override
                     public void onOpen(WebSocket webSocket, Response response) {
                         super.onOpen(webSocket, response);
+                        req_1 = new ACGetRouterInfoBean();
+                        req_1.setSender(sTNAPSpvH);
+                        req_1.setReceiver(sTNAPH);
+                        req_1.setMagic(magic);
+                        ACGetRouterInfoBean.MessageBodyBean messageBody_1 = new ACGetRouterInfoBean.MessageBodyBean();
+                        messageBody_1.setAssetType(assetName);
+                        List<String> nodeList_1 = new ArrayList<>();
+                        for (ChannelBean node : channelDesc) {
+                            nodeList_1.add(node.getTNAP());
+                        }
+                        messageBody_1.setNodeList(nodeList_1);
+                        req_1.setMessageBody(messageBody_1);
 
+                        String send_1 = gson.toJson(req_1);
+
+                        webSocket.send(send_1);
                     }
 
                     @Override
                     public void onMessage(WebSocket webSocket, String text) {
                         super.onMessage(webSocket, text);
+                        String messageTypeStr = JSONObjectUtil.getMessageType(text);
+
+                        if ("AckRouterInfo".equals(messageTypeStr)) {
+                            resp_2 = gson.fromJson(text, ACAckRouterInfoBean.class);
+
+                            rpc_3 = new JSONRpcClient.Builder()
+                                    .net(WalletApplication.getNetUrl())
+                                    .method("HTLCTransaction")
+                                    .params() // TODO HTLCTransaction
+                                    .id(wallet.getAddress() + paymentCodeBean.getTNAP() + "H")
+                                    .build();
+
+                            String json_4 = rpc_3.post();
+
+                        }
                     }
 
                     @Override
@@ -1152,22 +1424,13 @@ public class MainActivity extends BaseActivity {
                 }
             }
 
-            private void channelBalanceCheck() {
+            private boolean checkChannelBalance() {
                 price = paymentCodeBean.getPrice();
                 String priceTrim = BigDecimal.valueOf(price).toPlainString();
 
                 if (price > 10000000000000d) {
                     ToastUtil.show(getBaseContext(), "Payment code info error.\nPrice is 10000000000000 at most.");
-                    return;
-                }
-
-                String assetName = "";
-                for (String assetNameInMap : assetIdMap.keySet()) {
-                    String addOx = PrefixUtil.addOx(paymentCodeBean.getAssetId());
-                    if (assetIdMap.get(assetNameInMap).equals(addOx)) {
-                        assetName = assetNameInMap;
-                        break;
-                    }
+                    return false;
                 }
 
                 boolean isCoinInteger = !priceTrim.contains(".");
@@ -1201,24 +1464,26 @@ public class MainActivity extends BaseActivity {
                 }
 
                 if (!isCoinPriceOK) {
-                    return;
+                    return false;
                 }
 
                 if (!isPriceAffordable) {
                     ToastUtil.show(getBaseContext(), "Balance of current asset is not enough.");
-                    return;
+                    return false;
                 }
 
                 channelBeanFinalR.setTxNonce(channelBeanFinalR.getTxNonce() + 1);
                 // C++ is called cpp.
                 txNoncePp = channelBeanFinalR.getTxNonce();
 
-                btnTransferTo.setClickable(false);
+                btnPay.setClickable(false);
+
+                return true;
             }
 
             private void attemptRTransaction() {
                 WebSocketClient webSocketClient = new WebSocketClient.Builder()
-                        .url(TNAPUtil.getWs(sTNAPSpv))
+                        .url(TNAPUtil.getWs(sTNAPSpvR))
                         .build();
 
                 webSocketClient.connect(new WebSocketListener() {
@@ -1237,8 +1502,8 @@ public class MainActivity extends BaseActivity {
                         rpc_1 = new JSONRpcClient.Builder()
                                 .net(WalletApplication.getNetUrl())
                                 .method("FunderTransaction")
-                                .params(TNAPUtil.getPublicKey(sTNAP),
-                                        TNAPUtil.getPublicKey(sTNAPSpv),
+                                .params(TNAPUtil.getPublicKey(sTNAPR),
+                                        TNAPUtil.getPublicKey(sTNAPSpvR),
                                         channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
                                         channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
                                         String.valueOf(channelBeanFinalR.getBalance()),
@@ -1258,8 +1523,8 @@ public class MainActivity extends BaseActivity {
                         resp_2 = gson.fromJson(json_2, FunderTransactionBean.class);
 
                         req_3 = new ACRsmcBean();
-                        req_3.setSender(sTNAPSpv);
-                        req_3.setReceiver(sTNAP);
+                        req_3.setSender(sTNAPSpvR);
+                        req_3.setReceiver(sTNAPR);
                         req_3.setChannelName(channelBeanFinalR.getName());
                         req_3.setTxNonce(txNoncePp);
                         ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
@@ -1290,8 +1555,8 @@ public class MainActivity extends BaseActivity {
                                 resp_5 = tmp;
                                 req_6 = new ACRsmcSignBean();
                                 req_6.setChannelName(resp_5.getChannelName());
-                                req_6.setSender(sTNAPSpv);
-                                req_6.setReceiver(sTNAP);
+                                req_6.setSender(sTNAPSpvR);
+                                req_6.setReceiver(sTNAPR);
                                 req_6.setTxNonce(resp_5.getTxNonce());
                                 ACRsmcSignBean.MessageBodyBean messageBody_6 = new ACRsmcSignBean.MessageBodyBean();
                                 messageBody_6.setValue(resp_5.getMessageBody().getValue());
@@ -1312,8 +1577,8 @@ public class MainActivity extends BaseActivity {
 
                                 req_7 = new ACRsmcBean();
                                 req_7.setChannelName(resp_5.getChannelName());
-                                req_7.setSender(sTNAPSpv);
-                                req_7.setReceiver(sTNAP);
+                                req_7.setSender(sTNAPSpvR);
+                                req_7.setReceiver(sTNAPR);
                                 req_7.setTxNonce(resp_5.getTxNonce());
                                 ACRsmcBean.MessageBodyBean messageBody_7 = new ACRsmcBean.MessageBodyBean();
                                 messageBody_7.setAssetType(resp_5.getMessageBody().getAssetType());
@@ -1336,7 +1601,7 @@ public class MainActivity extends BaseActivity {
                             return;
                         }
                         if ("UpdateChannel".equals(messageTypeStr)) {
-                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpv, channelBeanFinalR.getAssetName());
+                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpvR, channelBeanFinalR.getAssetName());
 
                             List<Map<String, BillBean>> billList = wApp.getBillList();
                             if (billList == null) {
@@ -1360,9 +1625,9 @@ public class MainActivity extends BaseActivity {
                                     obtainBalance();
                                     refreshUITotal();
                                     tab.setSelectedItemId(R.id.navigationBill);
-                                    inputTransferTo.setText(null);
+                                    inputPaymentCodeAddress.setText(null);
                                     inputAmount.setText(null);
-                                    btnTransferTo.setClickable(true);
+                                    btnPay.setClickable(true);
                                     ToastUtil.show(getBaseContext(), "Channel payment admitted by the trinity node(not on the block chain yet).");
                                 }
                             });
@@ -1377,7 +1642,7 @@ public class MainActivity extends BaseActivity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                btnTransferTo.setClickable(true);
+                                btnPay.setClickable(true);
                                 ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             }
                         });
@@ -1405,9 +1670,8 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        int checkedRadioId = inputAssetsTrans.getCheckedRadioButtonId();
-        RadioButton radioChecked = MainActivity.this.findViewById(checkedRadioId);
-        String assetName = radioChecked.getText().toString().trim();
+        RadioButton checked = findViewById(inputAssetsTrans.getCheckedRadioButtonId());
+        String assetName = checked.getText().toString().trim().toUpperCase(Locale.getDefault());
 
         boolean isCoinInteger = !amountTrim.contains(".");
         boolean isCoinDigitsValid = !isCoinInteger && (amountTrim.length() - amountTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
@@ -1451,11 +1715,11 @@ public class MainActivity extends BaseActivity {
         }
 
         ToastUtil.show(getBaseContext(), "Doing addressMode.\nIt takes a very short time.");
-        btnTransferTo.setClickable(false);
-        attemptTransfer(toAddressStr, amountTrim, assetName);
+        btnPay.setClickable(false);
+        attemptPayAddress(toAddressStr, amountTrim, assetName);
     }
 
-    private void attemptTransfer(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
+    private void attemptPayAddress(@NonNull final String validToAddress, @NonNull final String validAmount, @NonNull final String assetName) {
         // Send post to addressMode to address.
         final Wallet wallet = wApp.getWallet();
         if (wallet == null) {
@@ -1465,7 +1729,7 @@ public class MainActivity extends BaseActivity {
                         public void run() {
                             // Toast please login first.
                             ToastUtil.show(getBaseContext(), getString(R.string.please_sign_in) + '.');
-                            btnTransferTo.setClickable(true);
+                            btnPay.setClickable(true);
                         }
                     }
             );
@@ -1488,7 +1752,7 @@ public class MainActivity extends BaseActivity {
                         @Override
                         public void run() {
                             ToastUtil.show(getBaseContext(), "Implicit problem exists.");
-                            btnTransferTo.setClickable(true);
+                            btnPay.setClickable(true);
                         }
                     });
                     return;
@@ -1503,7 +1767,7 @@ public class MainActivity extends BaseActivity {
                         @Override
                         public void run() {
                             ToastUtil.show(getBaseContext(), "Implicit problem exists.");
-                            btnTransferTo.setClickable(true);
+                            btnPay.setClickable(true);
                         }
                     });
                     return;
@@ -1526,7 +1790,7 @@ public class MainActivity extends BaseActivity {
                         @Override
                         public void run() {
                             ToastUtil.show(getBaseContext(), "Implicit problem exists.");
-                            btnTransferTo.setClickable(true);
+                            btnPay.setClickable(true);
                         }
                     });
                     return;
@@ -1537,12 +1801,12 @@ public class MainActivity extends BaseActivity {
                     @Override
                     public void run() {
                         if (!resp_4.isResult()) {
-                            btnTransferTo.setClickable(true);
+                            btnPay.setClickable(true);
                             ToastUtil.show(getBaseContext(), "Implicit problem exists.");
                             return;
                         }
                         ToastUtil.show(getBaseContext(), "Transfer succeed.\nBlock chain confirms in seconds.");
-                        btnTransferTo.setClickable(true);
+                        btnPay.setClickable(true);
                     }
                 });
             }
@@ -1550,7 +1814,7 @@ public class MainActivity extends BaseActivity {
         runOffUiThread(service);
     }
 
-    private void attemptSetupChannel() {
+    private synchronized void attemptSetupChannel() {
         inputTNAP.setError(null);
         inputDeposit.setError(null);
         inputAlias.setError(null);

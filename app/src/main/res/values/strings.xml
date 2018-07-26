@@ -18,7 +18,7 @@
     <string name="card_icon">cardIcon</string>
     <string name="bill">BILL</string>
     <string name="transfer">TRANSFER</string>
-    <string name="transfer_input_label">Payment Code/Receiver\'s Address</string>
+    <string name="payment_code_address_input_label">Payment Code/Receiver\'s Address</string>
     <string name="setup_channel">SET UP CHANNEL</string>
     <string name="tnap">TNAP</string>
     <string name="deposit">Deposit</string>
@@ -28,7 +28,7 @@
     <string name="gas">GAS</string>
     <string name="alias">Alias</string>
     <string name="please_sign_in">Please sign in</string>
-    <string name="btn_transfer">Transfer</string>
+    <string name="btn_pay">Pay</string>
     <string name="btn_setup_channel">Set Up Channel</string>
     <string name="btn_channel_close">btnChannelClose</string>
     <string name="title_activity_sign_in">Sign in</string>
@@ -55,4 +55,7 @@
     <string name="channel_balance">Balance: %1$s %2$s</string>
     <string name="channel_state">State: %1$s</string>
     <string name="net_state">%1$s NET</string>
+    <string name="btn_receive">Receive</string>
+    <string name="set_up_channel_first">No known channel, please set up first.</string>
+    <string name="qr_code">QRCode</string>
 </resources>

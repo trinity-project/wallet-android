@@ -291,7 +291,7 @@ public class ExampleInstrumentedTest {
 
     @Test
     public void testBase58() {
-        byte[] decode = Base58Util.decode("47o5PTwgSarBqiiBHoRQWL7QZGZ1zq199FBAU52kndkLxt3f2enAne8maSegQX4EYWvuEnLfZN1vqsMpWjvX41hjibW5HLANakxLiZDLUmPumumtuvmQtMckKjMfiy1g1UoekjU1Nmmks7Z4EY8QRXY6xmsEiSxX8ewutF2PHcLPxKTykePp5vZUh8DBbedEXFusZgJtSnNQGpjSgf2CRXjnzxhWgJQEbFrsoLEq2yFTE4nAsAr4x61AS7k6Aw8VQhDAgqPLLXJ8iVWL6SQJuLdcfyU");
+        byte[] decode = Base58Util.decode("oKGhPgpJC3vQKFkypXUQu5j9p79vpZAJENkMnDdhJE5GJt8nasH5APGg4LHgQ3dnZ17RvDPjCyVvRFJ2geDTCjSgYTwFvJqkYbRKNy4XEJGGEos6YtpbFAGWAHeXW7uA9ZGi1omEhLQF9agKkhFsm32kMr7DVhqG8Ts9mywPZ23iRK48PMtCc6vS8CvpFuqL1PuHncsZjkZVLbDuWvfAuEipKAMyxsyAyXPJ4xZC4W1UQ4gj");
         String decodeStr = new String(decode);
         String[] split = decodeStr.split("&");
         System.out.println();

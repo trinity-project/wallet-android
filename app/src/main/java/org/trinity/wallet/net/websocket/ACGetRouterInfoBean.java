@@ -1,9 +1,12 @@
 package org.trinity.wallet.net.websocket;
 
-public class ACGetRouterInfo {
-    private String MessageType;
+import java.util.List;
+
+public class ACGetRouterInfoBean extends BaseWebSocketBean {
+    private String MessageType = "GetRouterInfo";
     private String Sender;
     private String Receiver;
+    private String Magic;
     private MessageBodyBean MessageBody;
 
     public String getMessageType() {
@@ -30,6 +33,14 @@ public class ACGetRouterInfo {
         this.Receiver = Receiver;
     }
 
+    public String getMagic() {
+        return Magic;
+    }
+
+    public void setMagic(String Magic) {
+        this.Magic = Magic;
+    }
+
     public MessageBodyBean getMessageBody() {
         return MessageBody;
     }
@@ -40,7 +51,9 @@ public class ACGetRouterInfo {
 
     public static class MessageBodyBean {
         private String AssetType;
-        private String NodeList;
+        // A gateway api fix for java array.
+        private String type = "string";
+        private List<String> NodeList;
 
         public String getAssetType() {
             return AssetType;
@@ -50,11 +63,19 @@ public class ACGetRouterInfo {
             this.AssetType = AssetType;
         }
 
-        public String getNodeList() {
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public List<String> getNodeList() {
             return NodeList;
         }
 
-        public void setNodeList(String NodeList) {
+        public void setNodeList(List<String> NodeList) {
             this.NodeList = NodeList;
         }
     }

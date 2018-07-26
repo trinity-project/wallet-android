@@ -3,6 +3,7 @@ package org.trinity.wallet.net;
 import android.support.annotation.NonNull;
 
 import okhttp3.Request;
+import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 
 public class WebSocketClient extends AbstractClient {
@@ -14,8 +15,8 @@ public class WebSocketClient extends AbstractClient {
                 .build();
     }
 
-    public void connect(WebSocketListener listener) {
-        client.newWebSocket(request, listener);
+    public WebSocket connect(WebSocketListener listener) {
+        return client.newWebSocket(request, listener);
     }
 
     public static final class Builder {

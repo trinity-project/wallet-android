@@ -1,7 +1,7 @@
 package org.trinity.wallet.entity;
 
 public class PaymentCodeBean {
-    private String sTNAP;
+    private String TNAP;
     private String randomHash;
     /**
      * There is no 0x head here but server needs 0x.
@@ -10,12 +10,12 @@ public class PaymentCodeBean {
     private double price;
     private String comment;
 
-    public String getsTNAP() {
-        return sTNAP;
+    public String getTNAP() {
+        return TNAP;
     }
 
-    public void setsTNAP(String sTNAP) {
-        this.sTNAP = sTNAP;
+    public void setTNAP(String TNAP) {
+        this.TNAP = TNAP;
     }
 
     public String getRandomHash() {

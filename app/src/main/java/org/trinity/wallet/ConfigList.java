@@ -39,8 +39,8 @@ public final class ConfigList {
     public static final String NET_TYPE_TEST = "TEST";
     public static final int USER_PASSWORD_MIN = 8;
     public static final int USER_PASSWORD_MAX = 16;
-    public static final int QR_CODE_WIDTH = 200;
-    public static final int QR_CODE_HEIGHT = 200;
+    public static final int QR_CODE_WIDTH = 1024;
+    public static final int QR_CODE_HEIGHT = 1024;
     public static final int QR_MARGIN = 1;
     public static final String CHANNEL_STATE_HEATING = "Heating";
     public static final String CHANNEL_STATE_CLEAR = "Clear";

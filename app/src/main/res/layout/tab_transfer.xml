@@ -20,7 +20,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <android.support.design.widget.TextInputLayout
-        android:id="@+id/layTransferTo"
+        android:id="@+id/layPaymentCodeAddress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
@@ -31,11 +31,11 @@
         app:layout_constraintTop_toBottomOf="@id/titleTransfer">
 
         <EditText
-            android:id="@+id/inputTransferTo"
+            android:id="@+id/inputPaymentCodeAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ems="34"
-            android:hint="@string/transfer_input_label"
+            android:hint="@string/payment_code_address_input_label"
             android:inputType="textNoSuggestions"
             android:textSize="16sp" />
     </android.support.design.widget.TextInputLayout>
@@ -50,7 +50,7 @@
         android:visibility="gone"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/layTransferTo">
+        app:layout_constraintTop_toBottomOf="@id/layPaymentCodeAddress">
 
         <EditText
             android:id="@+id/inputAmount"
@@ -112,17 +112,41 @@
     </RadioGroup>
 
     <Button
-        android:id="@+id/btnTransferTo"
+        android:id="@+id/btnPay"
         style="?android:textAppearanceSmall"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:stateListAnimator="@null"
+        android:text="@string/btn_pay"
+        android:textSize="16sp"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/btnReceive"
+        app:layout_constraintTop_toBottomOf="@id/labelAssetsTrans" />
+
+    <Button
+        android:id="@+id/btnReceive"
+        style="?android:textAppearanceSmall"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="@dimen/activity_horizontal_margin"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:ems="8"
-        android:text="@string/btn_transfer"
+        android:stateListAnimator="@null"
+        android:text="@string/btn_receive"
         android:textSize="16sp"
-        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintLeft_toRightOf="@id/btnPay"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/labelAssetsTrans" />
+
+    <ImageView
+        android:id="@+id/paymentCodeQR"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="@dimen/activity_horizontal_margin"
+        android:layout_marginStart="@dimen/activity_horizontal_margin"
+        android:contentDescription="@string/qr_code"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
 </android.support.constraint.ConstraintLayout>

@@ -36,10 +36,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="@dimen/activity_vertical_margin"
-                android:text="No known channel, please set up first."
+                android:text="@string/set_up_channel_first"
                 android:textAlignment="center"
                 android:textColor="@color/colorListBlue"
                 android:textSize="16sp" />
         </LinearLayout>
     </ScrollView>
+
+
 </android.support.constraint.ConstraintLayout>

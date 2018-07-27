@@ -62,6 +62,7 @@ import org.trinity.wallet.net.WebSocketClient;
 import org.trinity.wallet.net.jsonrpc.ConstructTxBean;
 import org.trinity.wallet.net.jsonrpc.FunderTransactionBean;
 import org.trinity.wallet.net.jsonrpc.GetBalanceBean;
+import org.trinity.wallet.net.jsonrpc.HTLCTransactionBean;
 import org.trinity.wallet.net.jsonrpc.RefoundTransBean;
 import org.trinity.wallet.net.jsonrpc.SendrawtransactionBean;
 import org.trinity.wallet.net.websocket.ACAckRouterInfoBean;
@@ -1274,9 +1275,9 @@ public class MainActivity extends BaseActivity {
             return true;
         }
 
-        final String sTNAPPay = paymentCodeBean.getTNAP();
+        final String sTNAPPayCode = paymentCodeBean.getTNAP();
 
-        if (!TNAPUtil.isValid(sTNAPPay)) {
+        if (!TNAPUtil.isValid(sTNAPPayCode)) {
             inputPaymentCodeAddress.setError("Invalid input.");
             inputPaymentCodeAddress.requestFocus();
             return false;
@@ -1300,7 +1301,7 @@ public class MainActivity extends BaseActivity {
 
         ChannelBean channelBean = null;
         for (ChannelBean channelBeanFor : channelDesc) {
-            if (channelBeanFor.getTNAP().equals(sTNAPPay) && PrefixUtil.trim0x(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
+            if (channelBeanFor.getTNAP().equals(sTNAPPayCode) && PrefixUtil.trim0x(assetIdMap.get(channelBeanFor.getAssetName())).equals(paymentCodeBean.getAssetId())) {
                 channelBean = channelBeanFor;
                 break;
             }
@@ -1315,9 +1316,9 @@ public class MainActivity extends BaseActivity {
             private String sTNAPSpvR;
 
             private boolean balanceOk;
-            // TODO            private CountDownLatch latch_UI_PayCodeInfoUserConfirm = new CountDownLatch(1);
+            // TODO private CountDownLatch latch_UI_PayCodeInfoUserConfirm = new CountDownLatch(1);
             private CountDownLatch latch_UI_PayBalanceAffordable = new CountDownLatch(1);
-// TODO            private CountDownLatch latch_UI_FeeUserConfirm = new CountDownLatch(1);
+            // TODO private CountDownLatch latch_UI_FeeUserConfirm = new CountDownLatch(1);
 
             @Override
             public void run() {
@@ -1354,9 +1355,32 @@ public class MainActivity extends BaseActivity {
                     return;
                 }
 
-                ChannelBean oldestChannel = channelDesc.get(channelDesc.size() - 1);
+                ChannelBean targetHChannel = null;
+                double feeZone = 0d;
+                for (ChannelBean mayH : channelDesc) {
+                    feeZone = BigDecimalUtil.subtract(mayH.getBalance(), paymentCodeBean.getPrice());
+                    if (feeZone >= 0) {
+                        targetHChannel = mayH;
+                        break;
+                    }
+                }
 
-                final String sTNAPH = oldestChannel.getTNAP();
+                if (targetHChannel == null) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            ToastUtil.show(getBaseContext(), "No channel can afford this price.");
+                            btnPay.setClickable(true);
+                        }
+                    });
+                    return;
+                }
+
+                final ChannelBean finalHChannel = targetHChannel;
+
+                final double feeZoneFinal = feeZone;
+
+                final String sTNAPH = targetHChannel.getTNAP();
                 final String sTNAPSpvH = TNAPUtil.getTNAPSpv(sTNAPH, wallet);
 
                 WebSocketClient webSocketClient = new WebSocketClient.Builder()
@@ -1367,6 +1391,7 @@ public class MainActivity extends BaseActivity {
                     private ACGetRouterInfoBean req_1;
                     private ACAckRouterInfoBean resp_2;
                     private JSONRpcClient rpc_3;
+                    private HTLCTransactionBean resp_4;
 
                     @Override
                     public void onOpen(WebSocket webSocket, Response response) {
@@ -1397,14 +1422,42 @@ public class MainActivity extends BaseActivity {
                         if ("AckRouterInfo".equals(messageTypeStr)) {
                             resp_2 = gson.fromJson(text, ACAckRouterInfoBean.class);
 
+                            double feeCount = 0d;
+                            // TODO Count fee and alert.
+
+                            if (BigDecimalUtil.subtract(feeCount, feeZoneFinal) > 0) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        ToastUtil.show(getBaseContext(), "No channel can afford this price and fee.");
+                                        btnPay.setClickable(true);
+                                    }
+                                });
+                                return;
+                            }
+
                             rpc_3 = new JSONRpcClient.Builder()
                                     .net(WalletApplication.getNetUrl())
                                     .method("HTLCTransaction")
-                                    .params() // TODO HTLCTransaction
+                                    .params(TNAPUtil.getPublicKey(sTNAPSpvH),
+                                            TNAPUtil.getPublicKey(sTNAPH),
+                                            String.valueOf(paymentCodeBean.getPrice()),
+                                            String.valueOf(finalHChannel.getBalance()),
+                                            String.valueOf(BigDecimalUtil.subtract(BigDecimalUtil.add(finalHChannel.getDeposit(), finalHChannel.getDeposit()), finalHChannel.getBalance())),
+                                            paymentCodeBean.getRandomHash(),
+                                            finalHChannel.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                            finalHChannel.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                            finalHChannel.getAssetName())
                                     .id(wallet.getAddress() + paymentCodeBean.getTNAP() + "H")
                                     .build();
 
                             String json_4 = rpc_3.post();
+
+                            if (json_4 == null) {
+                                webSocket.cancel();
+                            }
+
+                            resp_4 = gson.fromJson(json_4, HTLCTransactionBean.class);
 
                         }
                     }

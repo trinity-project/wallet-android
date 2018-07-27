@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
  */
 @RunWith(AndroidJUnit4.class)
 public class ExampleInstrumentedTest {
-    CountDownLatch latch = new CountDownLatch(1);
+    private CountDownLatch latch = new CountDownLatch(1);
 
     @Test
     public void useAppContext() {
@@ -251,31 +251,30 @@ public class ExampleInstrumentedTest {
                         if (result) {
                             webSocket.cancel();
                             latch.countDown();
-                            return;
+//                            return;
                         }
 
-                        if (!result) {
-                            iAmSender = false;
-                            // TODO mirror add channel.
-                        }
+//                        if (!result) {
+//                            iAmSender = false;
+//                        }
                     }
-                    return;
+//                    return;
                 }
 
-                if (!iAmSender) {
-                    if (text.contains("\"RegisterChannel\"")) {
-
-                    }
-
-                    if (text.contains("\"FounderSign\"")) {
-
-                    }
-
-                    if (text.contains("\"Founder\"")) {
-
-                    }
-                    latch.countDown();
-                }
+//                if (!iAmSender) {
+//                    if (text.contains("\"RegisterChannel\"")) {
+//
+//                    }
+//
+//                    if (text.contains("\"FounderSign\"")) {
+//
+//                    }
+//
+//                    if (text.contains("\"Founder\"")) {
+//
+//                    }
+//                    latch.countDown();
+//                }
             }
 
             @Override

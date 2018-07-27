@@ -1,13 +1,15 @@
 package org.trinity.wallet.net.websocket;
 
-public class ACFounderSignBean extends BaseWebSocketBean {
-    private String MessageType = "FounderSign";
+import java.util.List;
+
+public class ACHtlcSignBean extends BaseWebSocketBean {
+    private String MessageType = "HtlcSign";
     private String Sender;
     private String Receiver;
-    private String ChannelName;
     private int TxNonce;
+    private String ChannelName;
     private MessageBodyBean MessageBody;
-    private String Comments;
+    private List<List<String>> Router;
 
     public String getMessageType() {
         return MessageType;
@@ -33,20 +35,20 @@ public class ACFounderSignBean extends BaseWebSocketBean {
         this.Receiver = Receiver;
     }
 
-    public String getChannelName() {
-        return ChannelName;
-    }
-
-    public void setChannelName(String ChannelName) {
-        this.ChannelName = ChannelName;
-    }
-
     public int getTxNonce() {
         return TxNonce;
     }
 
     public void setTxNonce(int TxNonce) {
         this.TxNonce = TxNonce;
+    }
+
+    public String getChannelName() {
+        return ChannelName;
+    }
+
+    public void setChannelName(String ChannelName) {
+        this.ChannelName = ChannelName;
     }
 
     public MessageBodyBean getMessageBody() {
@@ -57,60 +59,45 @@ public class ACFounderSignBean extends BaseWebSocketBean {
         this.MessageBody = MessageBody;
     }
 
-    public String getComments() {
-        return Comments;
+    public List<List<String>> getRouter() {
+        return Router;
     }
 
-    public void setComments(String Comments) {
-        this.Comments = Comments;
+    public void setRouter(List<List<String>> Router) {
+        this.Router = Router;
     }
 
     public static class MessageBodyBean {
-        private FounderBean Founder;
-        private CommitmentBean Commitment;
-        private RevocableDeliveryBean RevocableDelivery;
-        private String AssetType;
-        private double Deposit;
+        private HCTXBean HCTX;
+        private RDTXBean RDTX;
+        private HTDTXBean HTDTX;
         private int RoleIndex;
+        private double Count;
+        private String AssetType;
+        private String HashR;
 
-        public FounderBean getFounder() {
-            return Founder;
+        public HCTXBean getHCTX() {
+            return HCTX;
         }
 
-        public void setFounder(FounderBean Founder) {
-            this.Founder = Founder;
+        public void setHCTX(HCTXBean HCTX) {
+            this.HCTX = HCTX;
         }
 
-        public CommitmentBean getCommitment() {
-            return Commitment;
+        public RDTXBean getRDTX() {
+            return RDTX;
         }
 
-        public void setCommitment(CommitmentBean Commitment) {
-            this.Commitment = Commitment;
+        public void setRDTX(RDTXBean RDTX) {
+            this.RDTX = RDTX;
         }
 
-        public RevocableDeliveryBean getRevocableDelivery() {
-            return RevocableDelivery;
+        public HTDTXBean getHTDTX() {
+            return HTDTX;
         }
 
-        public void setRevocableDelivery(RevocableDeliveryBean RevocableDelivery) {
-            this.RevocableDelivery = RevocableDelivery;
-        }
-
-        public String getAssetType() {
-            return AssetType;
-        }
-
-        public void setAssetType(String AssetType) {
-            this.AssetType = AssetType;
-        }
-
-        public double getDeposit() {
-            return Deposit;
-        }
-
-        public void setDeposit(double Deposit) {
-            this.Deposit = Deposit;
+        public void setHTDTX(HTDTXBean HTDTX) {
+            this.HTDTX = HTDTX;
         }
 
         public int getRoleIndex() {
@@ -121,7 +108,31 @@ public class ACFounderSignBean extends BaseWebSocketBean {
             this.RoleIndex = RoleIndex;
         }
 
-        public static class FounderBean {
+        public double getCount() {
+            return Count;
+        }
+
+        public void setCount(double Count) {
+            this.Count = Count;
+        }
+
+        public String getAssetType() {
+            return AssetType;
+        }
+
+        public void setAssetType(String AssetType) {
+            this.AssetType = AssetType;
+        }
+
+        public String getHashR() {
+            return HashR;
+        }
+
+        public void setHashR(String HashR) {
+            this.HashR = HashR;
+        }
+
+        public static class HCTXBean {
             private String txDataSign;
             private OriginalDataBean originalData;
 
@@ -142,11 +153,45 @@ public class ACFounderSignBean extends BaseWebSocketBean {
             }
 
             public static class OriginalDataBean {
+                private String HTLCscript;
+                private String RSMCscript;
+                private String addressHTLC;
+                private String addressRSMC;
                 private String txData;
-                private String addressFunding;
                 private String txId;
-                private String scriptFunding;
                 private String witness;
+
+                public String getHTLCscript() {
+                    return HTLCscript;
+                }
+
+                public void setHTLCscript(String HTLCscript) {
+                    this.HTLCscript = HTLCscript;
+                }
+
+                public String getRSMCscript() {
+                    return RSMCscript;
+                }
+
+                public void setRSMCscript(String RSMCscript) {
+                    this.RSMCscript = RSMCscript;
+                }
+
+                public String getAddressHTLC() {
+                    return addressHTLC;
+                }
+
+                public void setAddressHTLC(String addressHTLC) {
+                    this.addressHTLC = addressHTLC;
+                }
+
+                public String getAddressRSMC() {
+                    return addressRSMC;
+                }
+
+                public void setAddressRSMC(String addressRSMC) {
+                    this.addressRSMC = addressRSMC;
+                }
 
                 public String getTxData() {
                     return txData;
@@ -156,28 +201,12 @@ public class ACFounderSignBean extends BaseWebSocketBean {
                     this.txData = txData;
                 }
 
-                public String getAddressFunding() {
-                    return addressFunding;
-                }
-
-                public void setAddressFunding(String addressFunding) {
-                    this.addressFunding = addressFunding;
-                }
-
                 public String getTxId() {
                     return txId;
                 }
 
                 public void setTxId(String txId) {
                     this.txId = txId;
-                }
-
-                public String getScriptFunding() {
-                    return scriptFunding;
-                }
-
-                public void setScriptFunding(String scriptFunding) {
-                    this.scriptFunding = scriptFunding;
                 }
 
                 public String getWitness() {
@@ -190,7 +219,7 @@ public class ACFounderSignBean extends BaseWebSocketBean {
             }
         }
 
-        public static class CommitmentBean {
+        public static class RDTXBean {
             private String txDataSign;
             private OriginalDataBeanX originalData;
 
@@ -212,8 +241,6 @@ public class ACFounderSignBean extends BaseWebSocketBean {
 
             public static class OriginalDataBeanX {
                 private String txData;
-                private String addressRSMC;
-                private String scriptRSMC;
                 private String txId;
                 private String witness;
 
@@ -223,22 +250,6 @@ public class ACFounderSignBean extends BaseWebSocketBean {
 
                 public void setTxData(String txData) {
                     this.txData = txData;
-                }
-
-                public String getAddressRSMC() {
-                    return addressRSMC;
-                }
-
-                public void setAddressRSMC(String addressRSMC) {
-                    this.addressRSMC = addressRSMC;
-                }
-
-                public String getScriptRSMC() {
-                    return scriptRSMC;
-                }
-
-                public void setScriptRSMC(String scriptRSMC) {
-                    this.scriptRSMC = scriptRSMC;
                 }
 
                 public String getTxId() {
@@ -259,7 +270,7 @@ public class ACFounderSignBean extends BaseWebSocketBean {
             }
         }
 
-        public static class RevocableDeliveryBean {
+        public static class HTDTXBean {
             private String txDataSign;
             private OriginalDataBeanXX originalData;
 

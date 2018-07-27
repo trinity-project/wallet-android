@@ -51,7 +51,7 @@ public class ACGetRouterInfoBean extends BaseWebSocketBean {
 
     public static class MessageBodyBean {
         private String AssetType;
-        // A gateway api fix for java array.
+        // A gateway api fix about java array.
         private String type = "string";
         private List<String> NodeList;
 

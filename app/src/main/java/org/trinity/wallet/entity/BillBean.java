@@ -1,7 +1,9 @@
 package org.trinity.wallet.entity;
 
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
+import org.trinity.wallet.net.websocket.ACHtlcSignBean;
 import org.trinity.wallet.net.websocket.ACRsmcBean;
 import org.trinity.wallet.net.websocket.ACRsmcSignBean;
 
@@ -13,8 +15,14 @@ public class BillBean {
     private double fee;
     private ACRsmcSignBean sign_C_R_HeSigned;
     private ACRsmcBean sign_BR_HeSigned;
+    private ACHtlcSignBean sign_H_HeSigned;
 
-    public BillBean(@NonNull ChannelBean channelBean, double price, double fee, @NonNull ACRsmcSignBean sign_C_R_HeSigned, @NonNull ACRsmcBean sign_BR_HeSigned) {
+    public BillBean(@NonNull ChannelBean channelBean,
+                    double price,
+                    double fee,
+                    @NonNull ACRsmcSignBean sign_C_R_HeSigned,
+                    @NonNull ACRsmcBean sign_BR_HeSigned,
+                    @Nullable ACHtlcSignBean sign_H_HeSigned) {
         this.channel_Name = channelBean.getName();
         this.channel_Alias = channelBean.getAlias();
         this.assetName = channelBean.getAssetName();
@@ -22,6 +30,7 @@ public class BillBean {
         this.fee = fee;
         this.sign_C_R_HeSigned = sign_C_R_HeSigned;
         this.sign_BR_HeSigned = sign_BR_HeSigned;
+        this.sign_H_HeSigned = sign_H_HeSigned;
     }
 
     public String getChannel_Name() {
@@ -78,5 +87,13 @@ public class BillBean {
 
     public void setSign_BR_HeSigned(ACRsmcBean sign_BR_HeSigned) {
         this.sign_BR_HeSigned = sign_BR_HeSigned;
+    }
+
+    public ACHtlcSignBean getSign_H_HeSigned() {
+        return sign_H_HeSigned;
+    }
+
+    public void setSign_H_HeSigned(ACHtlcSignBean sign_H_HeSigned) {
+        this.sign_H_HeSigned = sign_H_HeSigned;
     }
 }

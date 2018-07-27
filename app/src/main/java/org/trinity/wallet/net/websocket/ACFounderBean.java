@@ -1,7 +1,5 @@
 package org.trinity.wallet.net.websocket;
 
-import org.trinity.wallet.net.websocket.BaseWebSocketBean;
-
 public class ACFounderBean extends BaseWebSocketBean {
     private String MessageType = "Founder";
     private String Sender;
@@ -9,7 +7,7 @@ public class ACFounderBean extends BaseWebSocketBean {
     private int TxNonce;
     private String ChannelName;
     private MessageBodyBean MessageBody;
-    private Object Comments;
+    private String Comments;
 
     public String getMessageType() {
         return MessageType;
@@ -59,11 +57,11 @@ public class ACFounderBean extends BaseWebSocketBean {
         this.MessageBody = MessageBody;
     }
 
-    public Object getComments() {
+    public String getComments() {
         return Comments;
     }
 
-    public void setComments(Object Comments) {
+    public void setComments(String Comments) {
         this.Comments = Comments;
     }
 

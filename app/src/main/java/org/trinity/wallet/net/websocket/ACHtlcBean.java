@@ -1,17 +1,82 @@
-package org.trinity.wallet.net.jsonrpc;
+package org.trinity.wallet.net.websocket;
 
-public class HTLCTransactionBean extends BaseJSONRpcBean {
-    private ResultBean result;
+import java.util.List;
 
-    public ResultBean getResult() {
-        return result;
+public class ACHtlcBean extends BaseWebSocketBean {
+    private String MessageType = "Htlc";
+    private String Sender;
+    private String Receiver;
+    private int TxNonce;
+    private String ChannelName;
+    private String Next;
+    private MessageBodyBean MessageBody;
+    private List<List<String>> Router;
+
+    public String getMessageType() {
+        return MessageType;
     }
 
-    public void setResult(ResultBean result) {
-        this.result = result;
+    public void setMessageType(String MessageType) {
+        this.MessageType = MessageType;
     }
 
-    public static class ResultBean {
+    public String getSender() {
+        return Sender;
+    }
+
+    public void setSender(String Sender) {
+        this.Sender = Sender;
+    }
+
+    public String getReceiver() {
+        return Receiver;
+    }
+
+    public void setReceiver(String Receiver) {
+        this.Receiver = Receiver;
+    }
+
+    public int getTxNonce() {
+        return TxNonce;
+    }
+
+    public void setTxNonce(int TxNonce) {
+        this.TxNonce = TxNonce;
+    }
+
+    public String getChannelName() {
+        return ChannelName;
+    }
+
+    public void setChannelName(String ChannelName) {
+        this.ChannelName = ChannelName;
+    }
+
+    public String getNext() {
+        return Next;
+    }
+
+    public void setNext(String Next) {
+        this.Next = Next;
+    }
+
+    public MessageBodyBean getMessageBody() {
+        return MessageBody;
+    }
+
+    public void setMessageBody(MessageBodyBean MessageBody) {
+        this.MessageBody = MessageBody;
+    }
+
+    public List<List<String>> getRouter() {
+        return Router;
+    }
+
+    public void setRouter(List<List<String>> Router) {
+        this.Router = Router;
+    }
+
+    public static class MessageBodyBean {
         private HCTXBean HCTX;
         private HEDTXBean HEDTX;
         private HERDTXBean HERDTX;
@@ -20,6 +85,11 @@ public class HTLCTransactionBean extends BaseJSONRpcBean {
         private HTRDTXBean HTRDTX;
         private HTTXBean HTTX;
         private RDTXBean RDTX;
+        private int RoleIndex;
+        private String Comments;
+        private double Count;
+        private String AssetType;
+        private String HashR;
 
         public HCTXBean getHCTX() {
             return HCTX;
@@ -83,6 +153,46 @@ public class HTLCTransactionBean extends BaseJSONRpcBean {
 
         public void setRDTX(RDTXBean RDTX) {
             this.RDTX = RDTX;
+        }
+
+        public int getRoleIndex() {
+            return RoleIndex;
+        }
+
+        public void setRoleIndex(int RoleIndex) {
+            this.RoleIndex = RoleIndex;
+        }
+
+        public String getComments() {
+            return Comments;
+        }
+
+        public void setComments(String Comments) {
+            this.Comments = Comments;
+        }
+
+        public double getCount() {
+            return Count;
+        }
+
+        public void setCount(double Count) {
+            this.Count = Count;
+        }
+
+        public String getAssetType() {
+            return AssetType;
+        }
+
+        public void setAssetType(String AssetType) {
+            this.AssetType = AssetType;
+        }
+
+        public String getHashR() {
+            return HashR;
+        }
+
+        public void setHashR(String HashR) {
+            this.HashR = HashR;
         }
 
         public static class HCTXBean {

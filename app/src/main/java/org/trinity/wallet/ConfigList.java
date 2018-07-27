@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 public final class ConfigList {
-    public static final String REGEX_NEO_PUBLIC_KEY = "[0-9a-f]{66}";
-    public static final String REGEX_IP_PORT = "^(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-5][0-5]):([0-9]|[1-9]\\d{1,3}|[1-5]\\d{4}|6[0-5]{2}[0-3][0-5])$";
+    public static final String REGEX_NEO_PUBLIC_KEY = "^[0-9a-f]{66}$";
+    public static final String REGEX_IP_PORT = "^(25[0-5]|2[0-4]\\d|((1\\d{2})|([1-9]?\\d)))\\.(25[0-5]|2[0-4]\\d|((1\\d{2})|([1-9]?\\d)))\\.(25[0-5]|2[0-4]\\d|((1\\d{2})|([1-9]?\\d)))\\.(25[0-5]|2[0-4]\\d|((1\\d{2})|([1-9]?\\d))):([0-9]|[1-9]\\d|[1-9]\\d{2}|[1-9]\\d{3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
 
     public static final String HTTP_URL_PREFIX = "http://";
     public static final String WS_URL_PREFIX = "ws://";

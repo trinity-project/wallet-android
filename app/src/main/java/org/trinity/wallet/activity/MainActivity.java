@@ -69,6 +69,9 @@ import org.trinity.wallet.net.websocket.ACAckRouterInfoBean;
 import org.trinity.wallet.net.websocket.ACFounderBean;
 import org.trinity.wallet.net.websocket.ACFounderSignBean;
 import org.trinity.wallet.net.websocket.ACGetRouterInfoBean;
+import org.trinity.wallet.net.websocket.ACHtlcBean;
+import org.trinity.wallet.net.websocket.ACHtlcSignBean;
+import org.trinity.wallet.net.websocket.ACRResponseBean;
 import org.trinity.wallet.net.websocket.ACRegisterChannelBean;
 import org.trinity.wallet.net.websocket.ACRsmcBean;
 import org.trinity.wallet.net.websocket.ACRsmcSignBean;
@@ -1307,38 +1310,58 @@ public class MainActivity extends BaseActivity {
             }
         }
 
+        btnPay.setClickable(false);
         final ChannelBean channelBeanFinal = channelBean;
         runOffUiThread(new Runnable() {
-            private transient ChannelBean channelBeanFinalR;
             private transient double price;
             private transient int txNoncePp;
+            private transient ChannelBean channelBeanR;
             private String sTNAPR;
             private String sTNAPSpvR;
 
+            private double feeCount;
             private boolean balanceOk;
-            // TODO private CountDownLatch latch_UI_PayCodeInfoUserConfirm = new CountDownLatch(1);
-            private CountDownLatch latch_UI_PayBalanceAffordable = new CountDownLatch(1);
-            // TODO private CountDownLatch latch_UI_FeeUserConfirm = new CountDownLatch(1);
+            private CountDownLatch latch_UI = new CountDownLatch(1);
+            private CountDownLatch latch_H = new CountDownLatch(1);
+
+            // H.
+            private ACGetRouterInfoBean req_1;
+            private ACAckRouterInfoBean resp_2;
+            private JSONRpcClient rpc_3;
+            private HTLCTransactionBean resp_4;
+            private ACHtlcBean req_5;
+            private ACHtlcSignBean resp_6;
+            private ACHtlcBean resp_7;
+            private ACHtlcSignBean req_8;
+            private ACRResponseBean resp_9;
+
+            // R.
+            private JSONRpcClient rpc_11;
+            private FunderTransactionBean resp_12;
+            private ACRsmcBean req_13;
+            private ACRsmcSignBean resp_14;
+            private ACRsmcBean resp_15;
+            private ACRsmcSignBean req_16;
+            private ACRsmcBean req_17;
+            private ACRsmcBean resp_18;
 
             @Override
             public void run() {
-                attemptHTransaction();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        balanceOk = checkChannelBalance();
-                        latch_UI_PayBalanceAffordable.countDown();
-                    }
-                });
+                if (channelBeanFinal == null) {
+                    attemptHTransaction();
+                } else {
+                    channelBeanR = channelBeanFinal;
+                    latch_H.countDown();
+                }
 
                 try {
-                    latch_UI_PayBalanceAffordable.await();
+                    latch_H.await();
                 } catch (InterruptedException ignored) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            btnPay.setClickable(true);
                             ToastUtil.show(getBaseContext(), "Too much works in background, please try again later.");
+                            btnPay.setClickable(true);
                         }
                     });
                     return;
@@ -1350,37 +1373,11 @@ public class MainActivity extends BaseActivity {
             }
 
             private void attemptHTransaction() {
-                if (channelBeanFinal != null) {
-                    channelBeanFinalR = channelBeanFinal;
-                    return;
-                }
+                final ChannelBean oldestHChannelFinal = channelDesc.get(channelDesc.size() - 1);
 
-                ChannelBean targetHChannel = null;
-                double feeZone = 0d;
-                for (ChannelBean mayH : channelDesc) {
-                    feeZone = BigDecimalUtil.subtract(mayH.getBalance(), paymentCodeBean.getPrice());
-                    if (feeZone >= 0) {
-                        targetHChannel = mayH;
-                        break;
-                    }
-                }
+                oldestHChannelFinal.setTxNonce(oldestHChannelFinal.getTxNonce() + 1);
 
-                if (targetHChannel == null) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            ToastUtil.show(getBaseContext(), "No channel can afford this price.");
-                            btnPay.setClickable(true);
-                        }
-                    });
-                    return;
-                }
-
-                final ChannelBean finalHChannel = targetHChannel;
-
-                final double feeZoneFinal = feeZone;
-
-                final String sTNAPH = targetHChannel.getTNAP();
+                final String sTNAPH = oldestHChannelFinal.getTNAP();
                 final String sTNAPSpvH = TNAPUtil.getTNAPSpv(sTNAPH, wallet);
 
                 WebSocketClient webSocketClient = new WebSocketClient.Builder()
@@ -1388,17 +1385,12 @@ public class MainActivity extends BaseActivity {
                         .build();
 
                 webSocketClient.connect(new WebSocketListener() {
-                    private ACGetRouterInfoBean req_1;
-                    private ACAckRouterInfoBean resp_2;
-                    private JSONRpcClient rpc_3;
-                    private HTLCTransactionBean resp_4;
-
                     @Override
                     public void onOpen(WebSocket webSocket, Response response) {
                         super.onOpen(webSocket, response);
                         req_1 = new ACGetRouterInfoBean();
                         req_1.setSender(sTNAPSpvH);
-                        req_1.setReceiver(sTNAPH);
+                        req_1.setReceiver(sTNAPPayCode);
                         req_1.setMagic(magic);
                         ACGetRouterInfoBean.MessageBodyBean messageBody_1 = new ACGetRouterInfoBean.MessageBodyBean();
                         messageBody_1.setAssetType(assetName);
@@ -1410,7 +1402,6 @@ public class MainActivity extends BaseActivity {
                         req_1.setMessageBody(messageBody_1);
 
                         String send_1 = gson.toJson(req_1);
-
                         webSocket.send(send_1);
                     }
 
@@ -1422,17 +1413,54 @@ public class MainActivity extends BaseActivity {
                         if ("AckRouterInfo".equals(messageTypeStr)) {
                             resp_2 = gson.fromJson(text, ACAckRouterInfoBean.class);
 
-                            double feeCount = 0d;
-                            // TODO Count fee and alert.
-
-                            if (BigDecimalUtil.subtract(feeCount, feeZoneFinal) > 0) {
+                            String nextTNAP = resp_2.getRouterInfo().getNext();
+                            ChannelBean nextChannel = null;
+                            for (ChannelBean mayNext : channelDesc) {
+                                if (mayNext.getTNAP().equals(nextTNAP)) {
+                                    nextChannel = mayNext;
+                                    break;
+                                }
+                            }
+                            if (nextChannel == null) {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        ToastUtil.show(getBaseContext(), "No channel can afford this price and fee.");
+                                        ToastUtil.show(getBaseContext(), "No channel links target node.");
                                         btnPay.setClickable(true);
                                     }
                                 });
+                                return;
+                            }
+
+                            channelBeanR = nextChannel;
+
+                            List<List<String>> fullPath = resp_2.getRouterInfo().getFullPath();
+                            feeCount = 0d;
+                            for (int index = 0; index < fullPath.size() - 1; index++) {
+                                List<String> sTNAP_Fee_Pair_Thing = fullPath.get(index);
+                                feeCount = BigDecimalUtil.add(feeCount, Double.valueOf(sTNAP_Fee_Pair_Thing.get(1)));
+                            }
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    balanceOk = checkChannelBalance();
+                                    latch_UI.countDown();
+                                }
+                            });
+
+                            try {
+                                latch_UI.await();
+                            } catch (InterruptedException ignored) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        ToastUtil.show(getBaseContext(), "Too much works in background, please try again later.");
+                                        btnPay.setClickable(true);
+                                    }
+                                });
+                                return;
+                            }
+                            if (!balanceOk) {
                                 return;
                             }
 
@@ -1440,14 +1468,14 @@ public class MainActivity extends BaseActivity {
                                     .net(WalletApplication.getNetUrl())
                                     .method("HTLCTransaction")
                                     .params(TNAPUtil.getPublicKey(sTNAPSpvH),
-                                            TNAPUtil.getPublicKey(sTNAPH),
+                                            TNAPUtil.getPublicKey(sTNAPPayCode),
                                             String.valueOf(paymentCodeBean.getPrice()),
-                                            String.valueOf(finalHChannel.getBalance()),
-                                            String.valueOf(BigDecimalUtil.subtract(BigDecimalUtil.add(finalHChannel.getDeposit(), finalHChannel.getDeposit()), finalHChannel.getBalance())),
+                                            String.valueOf(oldestHChannelFinal.getBalance()),
+                                            String.valueOf(BigDecimalUtil.subtract(BigDecimalUtil.add(oldestHChannelFinal.getDeposit(), oldestHChannelFinal.getDeposit()), oldestHChannelFinal.getBalance())),
                                             paymentCodeBean.getRandomHash(),
-                                            finalHChannel.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
-                                            finalHChannel.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
-                                            finalHChannel.getAssetName())
+                                            oldestHChannelFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                            oldestHChannelFinal.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                            oldestHChannelFinal.getAssetName())
                                     .id(wallet.getAddress() + paymentCodeBean.getTNAP() + "H")
                                     .build();
 
@@ -1459,6 +1487,64 @@ public class MainActivity extends BaseActivity {
 
                             resp_4 = gson.fromJson(json_4, HTLCTransactionBean.class);
 
+                            req_5 = new ACHtlcBean();
+                            req_5.setChannelName(oldestHChannelFinal.getName());
+                            req_5.setSender(sTNAPSpvH);
+                            req_5.setReceiver(sTNAPH);
+                            req_5.setRouter(resp_2.getRouterInfo().getFullPath());
+                            req_5.setNext(resp_2.getRouterInfo().getNext());
+                            req_5.setTxNonce(oldestHChannelFinal.getTxNonce());
+                            ACHtlcBean.MessageBodyBean messageBody_5 = gson.fromJson(gson.toJson(resp_4.getResult()), ACHtlcBean.MessageBodyBean.class);
+                            messageBody_5.setAssetType(oldestHChannelFinal.getAssetName());
+                            messageBody_5.setComments(paymentCodeBean.getComment());
+                            messageBody_5.setCount(BigDecimalUtil.add(price, feeCount));
+                            messageBody_5.setHashR(paymentCodeBean.getRandomHash());
+                            messageBody_5.setRoleIndex(1);
+                            req_5.setMessageBody(messageBody_5);
+
+                            String send_5 = gson.toJson(req_5);
+                            webSocket.send(send_5);
+                            return;
+                        }
+
+                        if ("HtlcSign".equals(messageTypeStr)) {
+                            resp_6 = gson.fromJson(text, ACHtlcSignBean.class);
+                            return;
+                        }
+
+                        if ("Htlc".equals(messageTypeStr)) {
+                            resp_7 = gson.fromJson(text, ACHtlcBean.class);
+
+                            req_8 = new ACHtlcSignBean();
+                            req_8.setChannelName(oldestHChannelFinal.getName());
+                            req_8.setSender(sTNAPSpvH);
+                            req_8.setReceiver(sTNAPH);
+                            req_8.setRouter(resp_2.getRouterInfo().getFullPath());
+                            req_8.setTxNonce(oldestHChannelFinal.getTxNonce());
+                            ACHtlcSignBean.MessageBodyBean messageBody_8 = new ACHtlcSignBean.MessageBodyBean();
+                            messageBody_8.setAssetType(resp_7.getMessageBody().getAssetType());
+                            messageBody_8.setCount(resp_7.getMessageBody().getCount());
+                            messageBody_8.setHashR(resp_7.getMessageBody().getHashR());
+                            messageBody_8.setRoleIndex(resp_7.getMessageBody().getRoleIndex());
+                            ACHtlcSignBean.MessageBodyBean.HCTXBean hctx_8 = new ACHtlcSignBean.MessageBodyBean.HCTXBean();
+                            hctx_8.setOriginalData(gson.fromJson(gson.toJson(resp_7.getMessageBody().getHCTX()), ACHtlcSignBean.MessageBodyBean.HCTXBean.OriginalDataBean.class));
+                            hctx_8.setTxDataSign(NeoSignUtil.signToHex(resp_7.getMessageBody().getHCTX().getTxData(), wallet.getPrivateKey()));
+                            messageBody_8.setHCTX(hctx_8);
+                            ACHtlcSignBean.MessageBodyBean.HTDTXBean htdtx_8 = new ACHtlcSignBean.MessageBodyBean.HTDTXBean();
+                            htdtx_8.setOriginalData(gson.fromJson(gson.toJson(resp_7.getMessageBody().getHTDTX()), ACHtlcSignBean.MessageBodyBean.HTDTXBean.OriginalDataBeanXX.class));
+                            htdtx_8.setTxDataSign(NeoSignUtil.signToHex(resp_7.getMessageBody().getHTDTX().getTxData(), wallet.getPrivateKey()));
+                            messageBody_8.setHTDTX(htdtx_8);
+                            ACHtlcSignBean.MessageBodyBean.RDTXBean rdtx_8 = new ACHtlcSignBean.MessageBodyBean.RDTXBean();
+                            rdtx_8.setOriginalData(gson.fromJson(gson.toJson(resp_7.getMessageBody().getRDTX()), ACHtlcSignBean.MessageBodyBean.RDTXBean.OriginalDataBeanX.class));
+                            rdtx_8.setTxDataSign(NeoSignUtil.signToHex(resp_7.getMessageBody().getRDTX().getTxData(), wallet.getPrivateKey()));
+                            messageBody_8.setRDTX(rdtx_8);
+                            req_8.setMessageBody(messageBody_8);
+                            return;
+                        }
+
+                        if ("RResponse".equals(messageTypeStr)) {
+                            resp_9 = gson.fromJson(text, ACRResponseBean.class);
+                            webSocket.close(1000, null);
                         }
                     }
 
@@ -1467,14 +1553,6 @@ public class MainActivity extends BaseActivity {
                         super.onFailure(webSocket, t, response);
                     }
                 });
-                // TODO H transaction.
-
-                List<ChannelBean> nextList = new ArrayList<>();
-
-                for (ChannelBean channelNext : channelDesc) {
-                    // if (xxx)
-                    channelBeanFinalR = channelNext;
-                }
             }
 
             private boolean checkChannelBalance() {
@@ -1490,46 +1568,45 @@ public class MainActivity extends BaseActivity {
                 boolean isCoinDigitsValid = !isCoinInteger && (priceTrim.length() - priceTrim.indexOf(".")) <= ConfigList.COIN_DIGITS;
 
                 boolean isCoinPriceOK = false;
-                boolean isPriceAffordable = false;
 
-                BigDecimal amountBigDecimal = BigDecimal.valueOf(price);
+                double priceAndFee = BigDecimalUtil.add(price, feeCount);
+                BigDecimal priceAndFeeBigDecimal = BigDecimal.valueOf(priceAndFee);
                 if (getString(R.string.tnc).equals(assetName)) {
                     if (isCoinInteger || isCoinDigitsValid) {
                         isCoinPriceOK = true;
                     } else {
                         ToastUtil.show(getBaseContext(), "Payment code info error.\nTNC balance is a decimal up to 8 digits.");
                     }
-                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
                 } else if (getString(R.string.neo).equals(assetName)) {
                     if (isCoinInteger) {
                         isCoinPriceOK = true;
                     } else {
                         ToastUtil.show(getBaseContext(), "Payment code info error.\nNEO balance is a integer.");
                     }
-                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
                 } else if (getString(R.string.gas).equals(assetName)) {
                     if (isCoinInteger || isCoinDigitsValid) {
                         isCoinPriceOK = true;
                     } else {
                         ToastUtil.show(getBaseContext(), "Payment code info error.\nGAS balance is a decimal up to 8 digits.");
                     }
-                    isPriceAffordable = amountBigDecimal.compareTo(BigDecimal.valueOf(channelBeanFinalR.getBalance())) <= 0;
                 }
 
                 if (!isCoinPriceOK) {
+                    ToastUtil.show(getBaseContext(), "No channel can afford this price.");
+                    btnPay.setClickable(true);
                     return false;
                 }
 
+                boolean isPriceAffordable = priceAndFeeBigDecimal.compareTo(BigDecimal.valueOf(channelBeanR.getBalance())) <= 0;
                 if (!isPriceAffordable) {
-                    ToastUtil.show(getBaseContext(), "Balance of current asset is not enough.");
+                    ToastUtil.show(getBaseContext(), "No channel can afford this price and fee.");
+                    btnPay.setClickable(true);
                     return false;
                 }
 
-                channelBeanFinalR.setTxNonce(channelBeanFinalR.getTxNonce() + 1);
-                // C++ is called cpp.
-                txNoncePp = channelBeanFinalR.getTxNonce();
-
-                btnPay.setClickable(false);
+                channelBeanR.setTxNonce(channelBeanR.getTxNonce() + 1);
+                // ++ is called pp.
+                txNoncePp = channelBeanR.getTxNonce();
 
                 return true;
             }
@@ -1540,57 +1617,48 @@ public class MainActivity extends BaseActivity {
                         .build();
 
                 webSocketClient.connect(new WebSocketListener() {
-                    private JSONRpcClient rpc_1;
-                    private FunderTransactionBean resp_2;
-                    private ACRsmcBean req_3;
-                    private ACRsmcSignBean resp_4;
-                    private ACRsmcBean resp_5;
-                    private ACRsmcSignBean req_6;
-                    private ACRsmcBean req_7;
-                    private ACRsmcBean resp_8;
-
                     @Override
                     public void onOpen(final WebSocket webSocket, Response response) {
                         super.onOpen(webSocket, response);
-                        rpc_1 = new JSONRpcClient.Builder()
+                        rpc_11 = new JSONRpcClient.Builder()
                                 .net(WalletApplication.getNetUrl())
                                 .method("FunderTransaction")
                                 .params(TNAPUtil.getPublicKey(sTNAPR),
                                         TNAPUtil.getPublicKey(sTNAPSpvR),
-                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
-                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
-                                        String.valueOf(channelBeanFinalR.getBalance()),
-                                        String.valueOf(channelBeanFinalR.getDeposit() + channelBeanFinalR.getDeposit() - channelBeanFinalR.getBalance()),
-                                        channelBeanFinalR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
-                                        channelBeanFinalR.getAssetName())
-                                .id(channelBeanFinalR.getName() + txNoncePp)
+                                        channelBeanR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getAddressFunding(),
+                                        channelBeanR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getScriptFunding(),
+                                        String.valueOf(channelBeanR.getBalance()),
+                                        String.valueOf(channelBeanR.getDeposit() + channelBeanR.getDeposit() - channelBeanR.getBalance()),
+                                        channelBeanR.getFounderSign_HeSigned().getMessageBody().getFounder().getOriginalData().getTxId(),
+                                        channelBeanR.getAssetName())
+                                .id(channelBeanR.getName() + txNoncePp)
                                 .build();
 
-                        String json_2 = rpc_1.post();
+                        String json_12 = rpc_11.post();
 
-                        if (json_2 == null) {
+                        if (json_12 == null) {
                             webSocket.cancel();
                             return;
                         }
 
-                        resp_2 = gson.fromJson(json_2, FunderTransactionBean.class);
+                        resp_12 = gson.fromJson(json_12, FunderTransactionBean.class);
 
-                        req_3 = new ACRsmcBean();
-                        req_3.setSender(sTNAPSpvR);
-                        req_3.setReceiver(sTNAPR);
-                        req_3.setChannelName(channelBeanFinalR.getName());
-                        req_3.setTxNonce(txNoncePp);
-                        ACRsmcBean.MessageBodyBean messageBody_3 = new ACRsmcBean.MessageBodyBean();
-                        messageBody_3.setCommitment(gson.fromJson(gson.toJson(resp_2.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
-                        messageBody_3.setRevocableDelivery(gson.fromJson(gson.toJson(resp_2.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
-                        messageBody_3.setAssetType(channelBeanFinalR.getAssetName());
-                        messageBody_3.setValue(price);
-                        messageBody_3.setRoleIndex(0);
-                        messageBody_3.setComments(paymentCodeBean.getComment());
-                        req_3.setMessageBody(messageBody_3);
+                        req_13 = new ACRsmcBean();
+                        req_13.setSender(sTNAPSpvR);
+                        req_13.setReceiver(sTNAPR);
+                        req_13.setChannelName(channelBeanR.getName());
+                        req_13.setTxNonce(txNoncePp);
+                        ACRsmcBean.MessageBodyBean messageBody_13 = new ACRsmcBean.MessageBodyBean();
+                        messageBody_13.setCommitment(gson.fromJson(gson.toJson(resp_12.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
+                        messageBody_13.setRevocableDelivery(gson.fromJson(gson.toJson(resp_12.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
+                        messageBody_13.setAssetType(channelBeanR.getAssetName());
+                        messageBody_13.setValue(price);
+                        messageBody_13.setRoleIndex(0);
+                        messageBody_13.setComments(paymentCodeBean.getComment());
+                        req_13.setMessageBody(messageBody_13);
 
-                        String send_3 = gson.toJson(req_3);
-                        webSocket.send(send_3);
+                        String send_13 = gson.toJson(req_13);
+                        webSocket.send(send_13);
                     }
 
                     @Override
@@ -1598,63 +1666,64 @@ public class MainActivity extends BaseActivity {
                         super.onMessage(webSocket, text);
                         String messageTypeStr = JSONObjectUtil.getMessageType(text);
                         if ("RsmcSign".equals(messageTypeStr)) {
-                            resp_4 = gson.fromJson(text, ACRsmcSignBean.class);
+                            resp_14 = gson.fromJson(text, ACRsmcSignBean.class);
                             return;
                         }
                         if ("Rsmc".equals(messageTypeStr)) {
                             ACRsmcBean tmp = gson.fromJson(text, ACRsmcBean.class);
-                            // case BR empty: save to r5.
+                            // case BR empty: save to r15.
                             if (tmp.getMessageBody().getBreachRemedy() == null) {
-                                resp_5 = tmp;
-                                req_6 = new ACRsmcSignBean();
-                                req_6.setChannelName(resp_5.getChannelName());
-                                req_6.setSender(sTNAPSpvR);
-                                req_6.setReceiver(sTNAPR);
-                                req_6.setTxNonce(resp_5.getTxNonce());
-                                ACRsmcSignBean.MessageBodyBean messageBody_6 = new ACRsmcSignBean.MessageBodyBean();
-                                messageBody_6.setValue(resp_5.getMessageBody().getValue());
-                                messageBody_6.setComments(resp_5.getMessageBody().getComments());
-                                messageBody_6.setRoleIndex(resp_5.getMessageBody().getRoleIndex());
-                                ACRsmcSignBean.MessageBodyBean.CommitmentBean commitment_6 = new ACRsmcSignBean.MessageBodyBean.CommitmentBean();
-                                commitment_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getCommitment()), ACRsmcSignBean.MessageBodyBean.CommitmentBean.OriginalDataBean.class));
-                                commitment_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
-                                messageBody_6.setCommitment(commitment_6);
-                                ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery_6 = new ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean();
-                                revocableDelivery_6.setOriginalData(gson.fromJson(gson.toJson(resp_5.getMessageBody().getRevocableDelivery()), ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanX.class));
-                                revocableDelivery_6.setTxDataSign(NeoSignUtil.signToHex(resp_5.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
-                                messageBody_6.setRevocableDelivery(revocableDelivery_6);
-                                req_6.setMessageBody(messageBody_6);
+                                resp_15 = tmp;
 
-                                String send_6 = gson.toJson(req_6);
-                                webSocket.send(send_6);
+                                req_16 = new ACRsmcSignBean();
+                                req_16.setChannelName(resp_15.getChannelName());
+                                req_16.setSender(sTNAPSpvR);
+                                req_16.setReceiver(sTNAPR);
+                                req_16.setTxNonce(resp_15.getTxNonce());
+                                ACRsmcSignBean.MessageBodyBean messageBody_16 = new ACRsmcSignBean.MessageBodyBean();
+                                messageBody_16.setValue(resp_15.getMessageBody().getValue());
+                                messageBody_16.setComments(resp_15.getMessageBody().getComments());
+                                messageBody_16.setRoleIndex(resp_15.getMessageBody().getRoleIndex());
+                                ACRsmcSignBean.MessageBodyBean.CommitmentBean commitment_16 = new ACRsmcSignBean.MessageBodyBean.CommitmentBean();
+                                commitment_16.setOriginalData(gson.fromJson(gson.toJson(resp_15.getMessageBody().getCommitment()), ACRsmcSignBean.MessageBodyBean.CommitmentBean.OriginalDataBean.class));
+                                commitment_16.setTxDataSign(NeoSignUtil.signToHex(resp_15.getMessageBody().getCommitment().getTxData(), wallet.getPrivateKey()));
+                                messageBody_16.setCommitment(commitment_16);
+                                ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean revocableDelivery_16 = new ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean();
+                                revocableDelivery_16.setOriginalData(gson.fromJson(gson.toJson(resp_15.getMessageBody().getRevocableDelivery()), ACRsmcSignBean.MessageBodyBean.RevocableDeliveryBean.OriginalDataBeanX.class));
+                                revocableDelivery_16.setTxDataSign(NeoSignUtil.signToHex(resp_15.getMessageBody().getRevocableDelivery().getTxData(), wallet.getPrivateKey()));
+                                messageBody_16.setRevocableDelivery(revocableDelivery_16);
+                                req_16.setMessageBody(messageBody_16);
 
-                                req_7 = new ACRsmcBean();
-                                req_7.setChannelName(resp_5.getChannelName());
-                                req_7.setSender(sTNAPSpvR);
-                                req_7.setReceiver(sTNAPR);
-                                req_7.setTxNonce(resp_5.getTxNonce());
-                                ACRsmcBean.MessageBodyBean messageBody_7 = new ACRsmcBean.MessageBodyBean();
-                                messageBody_7.setAssetType(resp_5.getMessageBody().getAssetType());
-                                messageBody_7.setValue(resp_5.getMessageBody().getValue());
-                                messageBody_7.setComments(resp_5.getMessageBody().getComments());
-                                messageBody_7.setRoleIndex(resp_5.getMessageBody().getRoleIndex() + 1);
-                                ACRsmcBean.MessageBodyBean.BreachRemedyBean breachRemedy_7 = new ACRsmcBean.MessageBodyBean.BreachRemedyBean();
-                                breachRemedy_7.setOriginalData(gson.fromJson(gson.toJson(resp_2.getResult().getBR_TX()), ACRsmcBean.MessageBodyBean.BreachRemedyBean.OriginalDataBean.class));
-                                breachRemedy_7.setTxDataSign(NeoSignUtil.signToHex(resp_2.getResult().getBR_TX().getTxData(), wallet.getPrivateKey()));
-                                messageBody_7.setBreachRemedy(breachRemedy_7);
-                                req_7.setMessageBody(messageBody_7);
+                                String send_16 = gson.toJson(req_16);
+                                webSocket.send(send_16);
 
-                                String send_7 = gson.toJson(req_7);
-                                webSocket.send(send_7);
+                                req_17 = new ACRsmcBean();
+                                req_17.setChannelName(resp_15.getChannelName());
+                                req_17.setSender(sTNAPSpvR);
+                                req_17.setReceiver(sTNAPR);
+                                req_17.setTxNonce(resp_15.getTxNonce());
+                                ACRsmcBean.MessageBodyBean messageBody_17 = new ACRsmcBean.MessageBodyBean();
+                                messageBody_17.setAssetType(resp_15.getMessageBody().getAssetType());
+                                messageBody_17.setValue(resp_15.getMessageBody().getValue());
+                                messageBody_17.setComments(resp_15.getMessageBody().getComments());
+                                messageBody_17.setRoleIndex(resp_15.getMessageBody().getRoleIndex() + 1);
+                                ACRsmcBean.MessageBodyBean.BreachRemedyBean breachRemedy_17 = new ACRsmcBean.MessageBodyBean.BreachRemedyBean();
+                                breachRemedy_17.setOriginalData(gson.fromJson(gson.toJson(resp_12.getResult().getBR_TX()), ACRsmcBean.MessageBodyBean.BreachRemedyBean.OriginalDataBean.class));
+                                breachRemedy_17.setTxDataSign(NeoSignUtil.signToHex(resp_12.getResult().getBR_TX().getTxData(), wallet.getPrivateKey()));
+                                messageBody_17.setBreachRemedy(breachRemedy_17);
+                                req_17.setMessageBody(messageBody_17);
+
+                                String send_17 = gson.toJson(req_17);
+                                webSocket.send(send_17);
                             }
-                            // case BR no empty save to r8.
+                            // case BR no empty save to r18.
                             else {
-                                resp_8 = tmp;
+                                resp_18 = tmp;
                             }
                             return;
                         }
                         if ("UpdateChannel".equals(messageTypeStr)) {
-                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpvR, channelBeanFinalR.getAssetName());
+                            double spvBalance = JSONObjectUtil.updateChannelGetSpvBalance(text, sTNAPSpvR, channelBeanR.getAssetName());
 
                             List<Map<String, BillBean>> billList = wApp.getBillList();
                             if (billList == null) {
@@ -1662,14 +1731,15 @@ public class MainActivity extends BaseActivity {
                             }
                             Map<String, BillBean> billBeanWithNetType = new HashMap<>();
                             billBeanWithNetType.put(net, new BillBean(
-                                    channelBeanFinalR,
-                                    BigDecimalUtil.subtract(spvBalance, channelBeanFinalR.getBalance()),
-                                    0d,
-                                    resp_4,
-                                    resp_8));
+                                    channelBeanR,
+                                    BigDecimalUtil.subtract(spvBalance, channelBeanR.getBalance()),
+                                    feeCount,
+                                    resp_14,
+                                    resp_18,
+                                    resp_6));
 
                             billList.add(billBeanWithNetType);
-                            channelBeanFinalR.setBalance(spvBalance);
+                            channelBeanR.setBalance(spvBalance);
 
                             wApp.setBillList(billList);
                             runOnUiThread(new Runnable() {

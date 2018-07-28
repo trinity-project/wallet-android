@@ -1,5 +1,7 @@
 package org.trinity.util.thread;
 
+import android.support.annotation.NonNull;
+
 import org.trinity.wallet.ConfigList;
 
 import java.util.concurrent.BlockingQueue;
@@ -36,7 +38,8 @@ public class ExecutorUtil {
         ThreadFactory threadFactory = new ThreadFactory() {
             private final AtomicInteger threadID = new AtomicInteger(75001);
 
-            public Thread newThread(Runnable r) {
+            @Override
+            public Thread newThread(@NonNull Runnable r) {
                 return new Thread(r, "AsyncTasksThread@" + threadID.getAndIncrement());
             }
         };

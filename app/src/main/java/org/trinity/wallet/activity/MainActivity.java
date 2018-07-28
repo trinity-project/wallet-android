@@ -36,6 +36,7 @@ import android.widget.TextView;
 import android.widget.Toolbar;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -1202,37 +1203,28 @@ public class MainActivity extends BaseActivity {
             return;
         }
 
-        runOffUiThread(new Runnable() {
-            @Override
-            public void run() {
-                boolean isValid = Neoutils.validateNEOAddress(toAddressTrim);
+        boolean isValid = Neoutils.validateNEOAddress(toAddressTrim);
 
-                if (!isValid) {
-                    payCodeMode(doPay);
-                    return;
-                }
+        if (!isValid) {
+            payCodeMode(doPay);
+            return;
+        }
 
-                // If not address mode now, show address mode view.
-                if (layAmount.getVisibility() == View.GONE) {
-                    switchUIPaymentCodeOrAddress(false);
-                    if (doPay) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ToastUtil.show(getBaseContext(), "Address verified.");
-                                inputAmount.requestFocus();
-                            }
-                        });
-                    }
-                    return;
-                }
+        // If not address mode now, show address mode view.
+        if (layAmount.getVisibility() == View.GONE) {
+            switchUIPaymentCodeOrAddress(false);
 
-                // If button calls and address mode view now, pay.
-                if (doPay) {
-                    addressMode(toAddressTrim);
-                }
+            if (doPay) {
+                ToastUtil.show(getBaseContext(), "Address verified.");
+                inputAmount.requestFocus();
             }
-        });
+            return;
+        }
+
+        // If button calls and address mode view now, pay.
+        if (doPay) {
+            addressMode(toAddressTrim);
+        }
     }
 
     private void payCodeMode(boolean doPay) {
@@ -1367,7 +1359,7 @@ public class MainActivity extends BaseActivity {
                     return;
                 }
 
-                if (balanceOk) {
+                if (channelBeanR != null && balanceOk) {
                     attemptRTransaction();
                 }
             }
@@ -1410,10 +1402,48 @@ public class MainActivity extends BaseActivity {
                         super.onMessage(webSocket, text);
                         String messageTypeStr = JSONObjectUtil.getMessageType(text);
 
+                        if ("HtlcFail".equals(messageTypeStr)) {
+                            JsonObject htlcFail = gson.fromJson(text, JsonObject.class);
+                            final String error = htlcFail.get("Error").getAsString();
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    String errorShow = error;
+
+                                    if (errorShow != null && errorShow.length() > 0) {
+                                        String last = errorShow.substring(errorShow.length() - 1, errorShow.length());
+                                        if (!last.equals(".")) {
+                                            errorShow = errorShow + ".";
+                                        }
+                                    } else {
+                                        errorShow = "Unknown payment code info error.";
+                                    }
+
+                                    ToastUtil.show(getBaseContext(), errorShow);
+                                    btnPay.setClickable(true);
+                                }
+                            });
+                            webSocket.close(1000, null);
+                            return;
+                        }
+
                         if ("AckRouterInfo".equals(messageTypeStr)) {
                             resp_2 = gson.fromJson(text, ACAckRouterInfoBean.class);
 
                             String nextTNAP = resp_2.getRouterInfo().getNext();
+
+                            if (nextTNAP == null || "".equals(nextTNAP)) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        ToastUtil.show(getBaseContext(), "No channel reaches the target trinity node.");
+                                        btnPay.setClickable(true);
+                                    }
+                                });
+                                webSocket.close(1000, null);
+                                return;
+                            }
+
                             ChannelBean nextChannel = null;
                             for (ChannelBean mayNext : channelDesc) {
                                 if (mayNext.getTNAP().equals(nextTNAP)) {
@@ -1425,7 +1455,7 @@ public class MainActivity extends BaseActivity {
                                 runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        ToastUtil.show(getBaseContext(), "No channel links target node.");
+                                        ToastUtil.show(getBaseContext(), "No channel reaches the target trinity node.");
                                         btnPay.setClickable(true);
                                     }
                                 });
@@ -1499,7 +1529,7 @@ public class MainActivity extends BaseActivity {
                             messageBody_5.setComments(paymentCodeBean.getComment());
                             messageBody_5.setCount(BigDecimalUtil.add(price, feeCount));
                             messageBody_5.setHashR(paymentCodeBean.getRandomHash());
-                            messageBody_5.setRoleIndex(1);
+                            messageBody_5.setRoleIndex(0);
                             req_5.setMessageBody(messageBody_5);
 
                             String send_5 = gson.toJson(req_5);
@@ -1520,7 +1550,7 @@ public class MainActivity extends BaseActivity {
                             req_8.setSender(sTNAPSpvH);
                             req_8.setReceiver(sTNAPH);
                             req_8.setRouter(resp_2.getRouterInfo().getFullPath());
-                            req_8.setTxNonce(oldestHChannelFinal.getTxNonce());
+                            req_8.setTxNonce(resp_7.getTxNonce());
                             ACHtlcSignBean.MessageBodyBean messageBody_8 = new ACHtlcSignBean.MessageBodyBean();
                             messageBody_8.setAssetType(resp_7.getMessageBody().getAssetType());
                             messageBody_8.setCount(resp_7.getMessageBody().getCount());
@@ -1539,12 +1569,22 @@ public class MainActivity extends BaseActivity {
                             rdtx_8.setTxDataSign(NeoSignUtil.signToHex(resp_7.getMessageBody().getRDTX().getTxData(), wallet.getPrivateKey()));
                             messageBody_8.setRDTX(rdtx_8);
                             req_8.setMessageBody(messageBody_8);
+
+                            String send_8 = gson.toJson(req_8);
+                            webSocket.send(send_8);
                             return;
                         }
 
                         if ("RResponse".equals(messageTypeStr)) {
                             resp_9 = gson.fromJson(text, ACRResponseBean.class);
+                            for (ChannelBean mayR : channelDesc) {
+                                if (mayR.getTNAP().equals(resp_2.getRouterInfo().getNext())) {
+                                    channelBeanR = mayR;
+                                    break;
+                                }
+                            }
                             webSocket.close(1000, null);
+                            latch_H.countDown();
                         }
                     }
 
@@ -1612,6 +1652,10 @@ public class MainActivity extends BaseActivity {
             }
 
             private void attemptRTransaction() {
+                sTNAPR = channelBeanR.getTNAP();
+                sTNAPSpvR = TNAPUtil.getTNAPSpv(sTNAPR, wallet);
+                final double priceAndFee = BigDecimalUtil.add(price, feeCount);
+
                 WebSocketClient webSocketClient = new WebSocketClient.Builder()
                         .url(TNAPUtil.getWs(sTNAPSpvR))
                         .build();
@@ -1652,7 +1696,7 @@ public class MainActivity extends BaseActivity {
                         messageBody_13.setCommitment(gson.fromJson(gson.toJson(resp_12.getResult().getC_TX()), ACRsmcBean.MessageBodyBean.CommitmentBean.class));
                         messageBody_13.setRevocableDelivery(gson.fromJson(gson.toJson(resp_12.getResult().getR_TX()), ACRsmcBean.MessageBodyBean.RevocableDeliveryBean.class));
                         messageBody_13.setAssetType(channelBeanR.getAssetName());
-                        messageBody_13.setValue(price);
+                        messageBody_13.setValue(priceAndFee);
                         messageBody_13.setRoleIndex(0);
                         messageBody_13.setComments(paymentCodeBean.getComment());
                         req_13.setMessageBody(messageBody_13);
@@ -1665,6 +1709,7 @@ public class MainActivity extends BaseActivity {
                     public void onMessage(final WebSocket webSocket, final String text) {
                         super.onMessage(webSocket, text);
                         String messageTypeStr = JSONObjectUtil.getMessageType(text);
+
                         if ("RsmcSign".equals(messageTypeStr)) {
                             resp_14 = gson.fromJson(text, ACRsmcSignBean.class);
                             return;

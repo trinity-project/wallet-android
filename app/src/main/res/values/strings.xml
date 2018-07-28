@@ -4,7 +4,6 @@
     <string name="tab_setup_channel">Set Up Channel</string>
     <string name="tab_channel">Channel</string>
     <string name="tab_bill">Bill</string>
-    <string name="tab_dev">Dev</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
@@ -16,10 +15,10 @@
     <string name="card_text">WALLET INFO\n%1$s</string>
     <string name="title_icon">TitleIcon</string>
     <string name="card_icon">cardIcon</string>
-    <string name="bill">BILL</string>
     <string name="transfer">TRANSFER</string>
-    <string name="payment_code_address_input_label">Payment Code/Receiver\'s Address</string>
     <string name="setup_channel">SET UP CHANNEL</string>
+    <string name="bill">BILL</string>
+    <string name="payment_code_address_input_label">Payment Code/Receiver\'s Address</string>
     <string name="tnap">TNAP</string>
     <string name="deposit">Deposit</string>
     <string name="assets">Assets</string>
@@ -57,5 +56,10 @@
     <string name="net_state">%1$s NET</string>
     <string name="btn_receive">Receive</string>
     <string name="set_up_channel_first">No known channel, please set up first.</string>
+    <string name="no_channel_bill_yet">No channel bill yet.</string>
     <string name="qr_code">QRCode</string>
+    <string name="no_balance">-</string>
+    <string name="chain">CHAIN</string>
+    <string name="channel">CHANNEL</string>
+    <string name="default_channel_alias">_DEFAULT_CHANNEL_ALIAS_</string>
 </resources>

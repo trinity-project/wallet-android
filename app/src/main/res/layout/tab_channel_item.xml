@@ -11,8 +11,8 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:text="_DEFAULT_CHANNEL_ALIAS_"
-        android:textSize="16sp"
+        android:text="@string/default_channel_alias"
+        android:textSize="14sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -33,18 +33,20 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="10"
-            android:text="@string/channel_deposit" />
+            android:text="@string/channel_deposit"
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/channelBalance"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="10"
-            android:text="@string/channel_balance" />
+            android:text="@string/channel_balance"
+            android:textSize="12sp" />
 
         <ImageButton
             android:id="@+id/channelClose"
-            android:layout_width="16dp"
+            android:layout_width="28dp"
             android:layout_height="28dp"
             android:layout_gravity="center_vertical"
             android:layout_weight="1"
@@ -68,7 +70,8 @@
             android:id="@+id/channelState"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/channel_state" />
+            android:text="@string/channel_state"
+            android:textSize="12sp" />
     </LinearLayout>
 
     <View

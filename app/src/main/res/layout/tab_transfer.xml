@@ -13,7 +13,7 @@
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
         android:text="@string/transfer"
-        android:textSize="22sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -32,12 +32,12 @@
 
         <EditText
             android:id="@+id/inputPaymentCodeAddress"
+            style="@android:style/Widget.Holo.Light.EditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="34"
             android:hint="@string/payment_code_address_input_label"
             android:inputType="textNoSuggestions"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </android.support.design.widget.TextInputLayout>
 
     <android.support.design.widget.TextInputLayout
@@ -59,7 +59,7 @@
             android:ems="10"
             android:hint="@string/amount"
             android:inputType="numberDecimal"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </android.support.design.widget.TextInputLayout>
 
 
@@ -70,7 +70,7 @@
         android:layout_marginStart="20dp"
         android:layout_marginTop="22dp"
         android:text="@string/assets"
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:visibility="gone"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@id/layAmount" />
@@ -92,7 +92,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/tnc"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <RadioButton
             android:id="@+id/rdoItmNEOTrans"
@@ -100,7 +100,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
             android:text="@string/neo"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <RadioButton
             android:id="@+id/rdoItmGASTrans"
@@ -108,34 +108,33 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
             android:text="@string/gas"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </RadioGroup>
 
     <Button
         android:id="@+id/btnPay"
-        style="?android:textAppearanceSmall"
+        style="@style/Widget.AppCompat.Button.Colored"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
         android:stateListAnimator="@null"
         android:text="@string/btn_pay"
-        android:textSize="16sp"
+        android:textSize="14sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toLeftOf="@id/btnReceive"
         app:layout_constraintTop_toBottomOf="@id/labelAssetsTrans" />
 
     <Button
         android:id="@+id/btnReceive"
-        style="?android:textAppearanceSmall"
+        style="@style/Widget.AppCompat.Button.Colored"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/activity_horizontal_margin"
-        android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
         android:stateListAnimator="@null"
         android:text="@string/btn_receive"
-        android:textSize="16sp"
+        android:textSize="14sp"
         app:layout_constraintLeft_toRightOf="@id/btnPay"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toBottomOf="@id/labelAssetsTrans" />

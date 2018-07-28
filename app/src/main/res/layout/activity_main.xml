@@ -72,9 +72,9 @@
     <android.support.design.widget.CoordinatorLayout
         android:id="@+id/cardsShell"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/activity_vertical_margin"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
+        android:layout_marginTop="@dimen/activity_horizontal_margin"
         android:visibility="gone"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         tools:context=".activity.TabbedActivity">
@@ -82,7 +82,7 @@
         <android.support.v4.view.ViewPager
             android:id="@+id/cardContainer"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="128dp"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             tools:ignore="PrivateResource" />
     </android.support.design.widget.CoordinatorLayout>
@@ -91,7 +91,6 @@
         android:id="@+id/tabsContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/tab"
         app:layout_constraintTop_toBottomOf="@+id/cardsShell">

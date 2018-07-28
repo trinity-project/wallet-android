@@ -130,7 +130,6 @@ public class ScanActivity extends BaseActivity implements DecoratedBarcodeView.T
 
     @OnClick(R.id.btnFromGallery)
     public void fromGallery(View view) {
-        // TODO scan from gallery.
-        ToastUtil.show(getBaseContext(), "Coming soon.");
+        ToastUtil.show(getBaseContext(), "We actually don't have this function.");
     }
 }

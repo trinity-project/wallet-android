@@ -94,6 +94,7 @@
 
                 <EditText
                     android:id="@+id/signInPrivateKey"
+                    style="@android:style/Widget.Holo.Light.EditText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="@string/private_key"
@@ -105,30 +106,33 @@
 
             <Button
                 android:id="@+id/btnSignIn"
-                style="?android:textAppearanceSmall"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/btn_sign_in"
+                android:textSize="14sp"
                 android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btnSignOut"
-                style="?android:textAppearanceSmall"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/btn_sign_out"
+                android:textSize="14sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
             <Button
                 android:id="@+id/btnChangePassword"
-                style="?android:textAppearanceSmall"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/change_app_password"
+                android:textSize="14sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </ScrollView>

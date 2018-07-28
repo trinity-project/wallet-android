@@ -13,7 +13,7 @@
         android:layout_marginStart="@dimen/activity_horizontal_margin"
         android:layout_marginTop="@dimen/activity_vertical_margin"
         android:text="@string/setup_channel"
-        android:textSize="22sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
@@ -32,12 +32,12 @@
 
         <EditText
             android:id="@+id/inputTNAP"
+            style="@android:style/Widget.Holo.Light.EditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="@string/tnap"
             android:inputType="textNoSuggestions"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </android.support.design.widget.TextInputLayout>
 
     <android.support.design.widget.TextInputLayout
@@ -53,12 +53,12 @@
 
         <EditText
             android:id="@+id/inputDeposit"
+            style="@android:style/Widget.Holo.Light.EditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="@string/deposit"
             android:inputType="numberDecimal"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </android.support.design.widget.TextInputLayout>
 
     <TextView
@@ -68,7 +68,7 @@
         android:layout_marginStart="20dp"
         android:layout_marginTop="22dp"
         android:text="@string/assets"
-        android:textSize="16sp"
+        android:textSize="14sp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toBottomOf="@id/layDeposit" />
 
@@ -88,7 +88,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/tnc"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <RadioButton
             android:id="@+id/rdoItmNEO"
@@ -96,7 +96,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
             android:text="@string/neo"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <RadioButton
             android:id="@+id/rdoItmGAS"
@@ -104,7 +104,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="2dp"
             android:text="@string/gas"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </RadioGroup>
 
     <android.support.design.widget.TextInputLayout
@@ -120,26 +120,25 @@
 
         <EditText
             android:id="@+id/inputAlias"
+            style="@android:style/Widget.Holo.Light.EditText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="@string/alias"
             android:inputType="textNoSuggestions"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
     </android.support.design.widget.TextInputLayout>
 
     <Button
         android:id="@+id/btnSetupChannel"
-        style="?android:textAppearanceSmall"
-        android:layout_width="wrap_content"
+        style="@style/Widget.AppCompat.Button.Colored"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="@dimen/activity_horizontal_margin"
-        android:layout_marginStart="@dimen/activity_horizontal_margin"
-        android:layout_marginTop="@dimen/activity_vertical_margin"
-        android:ems="8"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
         android:text="@string/btn_setup_channel"
-        android:textSize="16sp"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/layAlias" />
 </android.support.constraint.ConstraintLayout>
